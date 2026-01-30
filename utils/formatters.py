@@ -43,15 +43,14 @@ def format_bot_created_message(bot: Bot) -> str:
     Returns:
         Formatted success message
     """
-    # Escape markdown special characters in bot name and username
+    # Only escape bot name, not username (usernames can't have markdown special chars except underscore which is allowed)
     from utils.helpers import escape_markdown
     
-    bot_username = escape_markdown(bot.bot_username)
     bot_name = escape_markdown(bot.bot_name) if bot.bot_name else 'Not set'
     
     return f"""🎉 **Congratulations! Your bot is ready!**
 
-**Bot:** @{bot_username}
+**Bot:** @{bot.bot_username}
 **Name:** {bot_name}
 
 Your bot is now active and ready to accept subscribers!
@@ -80,12 +79,12 @@ def format_bot_info(bot: Bot) -> str:
     
     status = f"{EMOJI['success']} Active" if bot.is_active else f"{EMOJI['error']} Inactive"
     
-    bot_username = escape_markdown(bot.bot_username)
+    # Only escape bot name and description, not username
     bot_name = escape_markdown(bot.bot_name) if bot.bot_name else 'Not set'
     
     info = f"""**Bot Information**
 
-**Username:** @{bot_username}
+**Username:** @{bot.bot_username}
 **Name:** {bot_name}
 **Status:** {status}
 
@@ -237,15 +236,12 @@ def format_error_message(error: str) -> str:
     Format error message for display.
     
     Args:
-        error: Error message
+        error: Error message (should already be escaped if needed)
         
     Returns:
         Formatted error message
     """
-    from utils.helpers import escape_markdown
-    # Escape the error text to prevent markdown parsing issues
-    escaped_error = escape_markdown(error) if error else "Unknown error"
-    return f"{EMOJI['error']} **Error**\n\n{escaped_error}"
+    return f"{EMOJI['error']} **Error**\n\n{error}"
 
 
 def format_success_message(message: str) -> str:
@@ -253,15 +249,12 @@ def format_success_message(message: str) -> str:
     Format success message for display.
     
     Args:
-        message: Success message
+        message: Success message (should already be escaped if needed)
         
     Returns:
         Formatted success message
     """
-    from utils.helpers import escape_markdown
-    # Escape the message text to prevent markdown parsing issues
-    escaped_message = escape_markdown(message) if message else ""
-    return f"{EMOJI['success']} {escaped_message}"
+    return f"{EMOJI['success']} {message}"
 
 
 def format_limit_reached_message(
