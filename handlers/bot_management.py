@@ -316,6 +316,7 @@ async def confirm_delete_bot(update: Update, context: ContextTypes.DEFAULT_TYPE)
     await query.answer()
     
     from database import get_db
+    from utils.helpers import escape_markdown
     
     # Extract bot ID
     bot_id = int(query.data.replace('confirm_delete_', ''))
@@ -328,7 +329,8 @@ async def confirm_delete_bot(update: Update, context: ContextTypes.DEFAULT_TYPE)
             await query.answer("Bot not found!", show_alert=True)
             return
         
-        bot_username = bot.bot_username
+        # Escape username to handle underscores in Markdown
+        bot_username = escape_markdown(bot.bot_username)
         
         # Delete bot (cascades to all related data)
         db.delete(bot)
