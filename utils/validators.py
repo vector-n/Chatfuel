@@ -22,7 +22,8 @@ async def validate_bot_token(token: str) -> Tuple[bool, Optional[dict], Optional
     """
     # Check token format
     if not re.match(r'^\d+:[A-Za-z0-9_-]{35}$', token):
-        return False, None, "Invalid token format. Token should be like: 123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
+        from utils.error_messages import get_error_message
+        return False, None, get_error_message('invalid_token_format')
     
     # Try to get bot info from Telegram API
     try:
@@ -35,13 +36,16 @@ async def validate_bot_token(token: str) -> Tuple[bool, Optional[dict], Optional
                     bot_info = data.get('result', {})
                     return True, bot_info, None
                 else:
+                    from utils.error_messages import get_error_message
                     error = data.get('description', 'Unknown error')
-                    return False, None, f"Telegram API error: {error}"
+                    return False, None, get_error_message('token_api_error') + f"\n\n**Telegram says:** {error}"
                     
     except aiohttp.ClientError as e:
-        return False, None, f"Network error: {str(e)}"
+        from utils.error_messages import get_error_message
+        return False, None, get_error_message('network_error')
     except Exception as e:
-        return False, None, f"Error validating token: {str(e)}"
+        from utils.error_messages import get_error_message
+        return False, None, get_error_message('unknown_error')
 
 
 def validate_message_text(text: str) -> Tuple[bool, Optional[str]]:
