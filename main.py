@@ -30,7 +30,17 @@ from handlers.bot_management import (
     delete_bot_callback,
     confirm_delete_bot,
 )
-from handlers.help import show_help_menu
+from handlers.help import (
+    show_help_menu,
+    show_help_quickstart,
+    show_help_commands,
+    show_help_tutorials,
+    show_help_faq,
+    show_help_contact,
+    show_tutorial_first_bot,
+    show_tutorial_tokens,
+    show_tutorial_sharing,
+)
 
 # Configure logging
 logging.basicConfig(
@@ -76,12 +86,13 @@ def main():
         # Add conversation handler for adding bots
         application.add_handler(add_bot_conversation)
         
-        # Add callback query handlers
+        # Add callback query handlers - Main menu
         application.add_handler(CallbackQueryHandler(
             main_menu_callback,
             pattern='^(main_|back_to_main)'
         ))
         
+        # Bot management callbacks
         application.add_handler(CallbackQueryHandler(
             select_bot_callback,
             pattern=f'^({CALLBACK_PREFIX["bot_select"]}|bot_manage_)'
@@ -95,6 +106,48 @@ def main():
         application.add_handler(CallbackQueryHandler(
             confirm_delete_bot,
             pattern='^confirm_delete_'
+        ))
+        
+        # Help menu callbacks
+        application.add_handler(CallbackQueryHandler(
+            show_help_quickstart,
+            pattern='^help_quickstart$'
+        ))
+        
+        application.add_handler(CallbackQueryHandler(
+            show_help_commands,
+            pattern='^help_commands$'
+        ))
+        
+        application.add_handler(CallbackQueryHandler(
+            show_help_tutorials,
+            pattern='^help_tutorials$'
+        ))
+        
+        application.add_handler(CallbackQueryHandler(
+            show_help_faq,
+            pattern='^help_faq$'
+        ))
+        
+        application.add_handler(CallbackQueryHandler(
+            show_help_contact,
+            pattern='^help_contact$'
+        ))
+        
+        # Tutorial callbacks
+        application.add_handler(CallbackQueryHandler(
+            show_tutorial_first_bot,
+            pattern='^tutorial_first_bot$'
+        ))
+        
+        application.add_handler(CallbackQueryHandler(
+            show_tutorial_tokens,
+            pattern='^tutorial_tokens$'
+        ))
+        
+        application.add_handler(CallbackQueryHandler(
+            show_tutorial_sharing,
+            pattern='^tutorial_sharing$'
         ))
         
         # Error handler
