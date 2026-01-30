@@ -39,7 +39,7 @@ class User(Base):
     
     # Relationships
     bots = relationship('Bot', back_populates='owner', cascade='all, delete-orphan')
-    bot_admins = relationship('BotAdmin', back_populates='user', cascade='all, delete-orphan')
+    bot_admins = relationship('BotAdmin', back_populates='user', foreign_keys='BotAdmin.user_id', cascade='all, delete-orphan')
     payments = relationship('Payment', back_populates='user', cascade='all, delete-orphan')
     
     def __repr__(self):
