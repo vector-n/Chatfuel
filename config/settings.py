@@ -3,13 +3,12 @@
 import os
 from typing import List
 from dotenv import load_dotenv
-from pydantic_settings import BaseSettings
 
 # Load environment variables
 load_dotenv()
 
 
-class Settings(BaseSettings):
+class Settings:
     """Application settings loaded from environment variables."""
     
     # Bot Configuration
@@ -46,17 +45,17 @@ class Settings(BaseSettings):
     # Webhook (for production)
     WEBHOOK_URL: str = os.getenv('WEBHOOK_URL', '')
     WEBHOOK_PORT: int = int(os.getenv('WEBHOOK_PORT', '8443'))
-    USE_WEBHOOK: bool = ENVIRONMENT == 'production'
+    
+    @property
+    def USE_WEBHOOK(self) -> bool:
+        """Use webhook in production, polling in development."""
+        return self.ENVIRONMENT == 'production'
     
     # Logging
     LOG_LEVEL: str = os.getenv('LOG_LEVEL', 'INFO')
     
     # Pagination
     ITEMS_PER_PAGE: int = 10
-    
-    class Config:
-        env_file = '.env'
-        case_sensitive = True
 
 
 # Create global settings instance
