@@ -43,10 +43,16 @@ def format_bot_created_message(bot: Bot) -> str:
     Returns:
         Formatted success message
     """
+    # Escape markdown special characters in bot name and username
+    from utils.helpers import escape_markdown
+    
+    bot_username = escape_markdown(bot.bot_username)
+    bot_name = escape_markdown(bot.bot_name) if bot.bot_name else 'Not set'
+    
     return f"""🎉 **Congratulations! Your bot is ready!**
 
-**Bot:** @{bot.bot_username}
-**Name:** {bot.bot_name or 'Not set'}
+**Bot:** @{bot_username}
+**Name:** {bot_name}
 
 Your bot is now active and ready to accept subscribers!
 
@@ -70,14 +76,17 @@ def format_bot_info(bot: Bot) -> str:
     Returns:
         Formatted bot info
     """
-    from utils.helpers import format_datetime
+    from utils.helpers import format_datetime, escape_markdown
     
     status = f"{EMOJI['success']} Active" if bot.is_active else f"{EMOJI['error']} Inactive"
     
+    bot_username = escape_markdown(bot.bot_username)
+    bot_name = escape_markdown(bot.bot_name) if bot.bot_name else 'Not set'
+    
     info = f"""**Bot Information**
 
-**Username:** @{bot.bot_username}
-**Name:** {bot.bot_name or 'Not set'}
+**Username:** @{bot_username}
+**Name:** {bot_name}
 **Status:** {status}
 
 {EMOJI['subscribers']} **Subscribers:** {bot.subscriber_count}
@@ -88,7 +97,8 @@ def format_bot_info(bot: Bot) -> str:
 """
     
     if bot.description:
-        info += f"\n**Description:**\n{bot.description}"
+        description = escape_markdown(bot.description)
+        info += f"\n**Description:**\n{description}"
     
     return info
 
