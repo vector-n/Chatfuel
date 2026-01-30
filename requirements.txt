@@ -1,0 +1,35 @@
+# Core Bot Framework
+python-telegram-bot==20.7
+telegram==0.0.1
+
+# Database
+sqlalchemy==2.0.23
+psycopg2-binary==2.9.9
+alembic==1.13.1
+
+# Task Scheduling
+apscheduler==3.10.4
+
+# Environment & Configuration
+python-dotenv==1.0.0
+
+# Async & HTTP
+aiohttp==3.9.1
+asyncio==3.4.3
+
+# Data Validation
+pydantic==2.5.3
+
+# Security
+cryptography==41.0.7
+
+# Utilities
+python-dateutil==2.8.2
+pytz==2023.3
+
+# RSS & Social Media
+feedparser==6.0.10
+
+# For development
+pytest==7.4.3
+pytest-asyncio==0.21.1
