@@ -243,7 +243,11 @@ async def select_bot_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
     from config.constants import CALLBACK_PREFIX
     
     # Extract bot ID from callback data
-    bot_id = int(query.data.replace(CALLBACK_PREFIX['bot_select'], ''))
+    # Handle both bot_select_ and bot_manage_ patterns
+    if query.data.startswith('bot_manage_'):
+        bot_id = int(query.data.replace('bot_manage_', ''))
+    else:
+        bot_id = int(query.data.replace(CALLBACK_PREFIX['bot_select'], ''))
     
     db = next(get_db())
     try:
@@ -312,7 +316,6 @@ async def confirm_delete_bot(update: Update, context: ContextTypes.DEFAULT_TYPE)
     await query.answer()
     
     from database import get_db
-    from utils.helpers import escape_markdown
     
     # Extract bot ID
     bot_id = int(query.data.replace('confirm_delete_', ''))
@@ -325,7 +328,7 @@ async def confirm_delete_bot(update: Update, context: ContextTypes.DEFAULT_TYPE)
             await query.answer("Bot not found!", show_alert=True)
             return
         
-        bot_username = escape_markdown(bot.bot_username)
+        bot_username = bot.bot_username
         
         # Delete bot (cascades to all related data)
         db.delete(bot)
