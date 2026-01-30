@@ -84,7 +84,7 @@ def main():
         
         application.add_handler(CallbackQueryHandler(
             select_bot_callback,
-            pattern=f'^{CALLBACK_PREFIX["bot_select"]}'
+            pattern=f'^({CALLBACK_PREFIX["bot_select"]}|bot_manage_)'
         ))
         
         application.add_handler(CallbackQueryHandler(
