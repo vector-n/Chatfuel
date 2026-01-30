@@ -43,14 +43,15 @@ def format_bot_created_message(bot: Bot) -> str:
     Returns:
         Formatted success message
     """
-    # Only escape bot name, not username (usernames can't have markdown special chars except underscore which is allowed)
     from utils.helpers import escape_markdown
     
+    # Escape both username and name - usernames can contain underscores
+    bot_username = escape_markdown(bot.bot_username) if bot.bot_username else 'unknown'
     bot_name = escape_markdown(bot.bot_name) if bot.bot_name else 'Not set'
     
     return f"""🎉 **Congratulations! Your bot is ready!**
 
-**Bot:** @{bot.bot_username}
+**Bot:** @{bot_username}
 **Name:** {bot_name}
 
 Your bot is now active and ready to accept subscribers!
@@ -79,12 +80,13 @@ def format_bot_info(bot: Bot) -> str:
     
     status = f"{EMOJI['success']} Active" if bot.is_active else f"{EMOJI['error']} Inactive"
     
-    # Only escape bot name and description, not username
+    # Escape username, name, and description - usernames can contain underscores
+    bot_username = escape_markdown(bot.bot_username) if bot.bot_username else 'unknown'
     bot_name = escape_markdown(bot.bot_name) if bot.bot_name else 'Not set'
     
     info = f"""**Bot Information**
 
-**Username:** @{bot.bot_username}
+**Username:** @{bot_username}
 **Name:** {bot_name}
 **Status:** {status}
 
