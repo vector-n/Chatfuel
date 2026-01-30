@@ -242,7 +242,10 @@ def format_error_message(error: str) -> str:
     Returns:
         Formatted error message
     """
-    return f"{EMOJI['error']} **Error**\n\n{error}"
+    from utils.helpers import escape_markdown
+    # Escape the error text to prevent markdown parsing issues
+    escaped_error = escape_markdown(error) if error else "Unknown error"
+    return f"{EMOJI['error']} **Error**\n\n{escaped_error}"
 
 
 def format_success_message(message: str) -> str:
@@ -255,7 +258,10 @@ def format_success_message(message: str) -> str:
     Returns:
         Formatted success message
     """
-    return f"{EMOJI['success']} {message}"
+    from utils.helpers import escape_markdown
+    # Escape the message text to prevent markdown parsing issues
+    escaped_message = escape_markdown(message) if message else ""
+    return f"{EMOJI['success']} {escaped_message}"
 
 
 def format_limit_reached_message(
