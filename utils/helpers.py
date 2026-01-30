@@ -167,7 +167,7 @@ def truncate_text(text: str, max_length: int = 100, suffix: str = "...") -> str:
 
 def escape_markdown(text: str) -> str:
     """
-    Escape special characters for Telegram MarkdownV2.
+    Escape special characters for Telegram Markdown.
     
     Args:
         text: Text to escape
@@ -175,7 +175,12 @@ def escape_markdown(text: str) -> str:
     Returns:
         Escaped text
     """
-    special_chars = ['_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!']
+    if not text:
+        return ""
+    
+    # For regular Markdown (parse_mode='Markdown'), we need to escape:
+    # _ (underscore), * (asterisk), [ (left bracket), ` (backtick)
+    special_chars = ['_', '*', '[', '`']
     
     for char in special_chars:
         text = text.replace(char, f'\\{char}')
