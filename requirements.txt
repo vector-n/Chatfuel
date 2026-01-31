@@ -1,7 +1,7 @@
 # Core Bot Framework
 python-telegram-bot[webhooks]==20.7
 telegram==0.0.1
-
+Flask==3.0.0
 # Database
 sqlalchemy==2.0.23
 psycopg2-binary==2.9.9
