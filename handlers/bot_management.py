@@ -1,5 +1,6 @@
 """Bot management handlers - create, list, delete bots."""
 
+import logging
 from telegram import Update
 from telegram.ext import ContextTypes, ConversationHandler
 from sqlalchemy.orm import Session
@@ -20,8 +21,11 @@ from utils.formatters import (
     format_limit_reached_message,
 )
 from utils.permissions import check_limit
-from utils.helpers import encrypt_token
+from utils.helpers import encrypt_token, decrypt_token
 from config.constants import EMOJI
+from services.bot_setup import setup_created_bot, generate_bot_start_link, remove_webhook
+
+logger = logging.getLogger(__name__)
 
 # Conversation states
 WAITING_FOR_TOKEN = 1
@@ -174,6 +178,20 @@ async def receive_bot_token(
             parse_mode='Markdown'
         )
         
+        # Check bot limit FIRST before validating
+        can_create, limit_msg = check_limit(user, 'max_bots', db)
+        
+        if not can_create:
+            await status_msg.edit_text(
+                format_limit_reached_message(
+                    'bots',
+                    user.premium_tier,
+                    limit_msg
+                ),
+                parse_mode='Markdown'
+            )
+            return ConversationHandler.END
+        
         # Validate token
         is_valid, bot_info, error = await validate_bot_token(token)
         
@@ -193,6 +211,12 @@ async def receive_bot_token(
             )
             return ConversationHandler.END
         
+        # Update status message
+        await status_msg.edit_text(
+            f"{EMOJI['clock']} Setting up webhook and configuring bot...",
+            parse_mode='Markdown'
+        )
+        
         # Create bot in database
         new_bot = Bot(
             user_id=user.id,
@@ -206,20 +230,55 @@ async def receive_bot_token(
         db.commit()
         db.refresh(new_bot)
         
-        # Success message
+        # Setup webhook and commands for the created bot
+        setup_success = await setup_created_bot(new_bot, token)
+        
+        if not setup_success:
+            # Webhook setup failed, but bot is created
+            success_text = format_bot_created_message(new_bot)
+            success_text += f"\n\n⚠️ Note: Webhook setup had issues. The bot may need reconfiguration."
+        else:
+            # Enhanced success message with instructions
+            bot_link = generate_bot_start_link(bot_info['username'])
+            
+            success_text = f"""✅ **Bot Created Successfully!**
+
+🤖 **Bot**: @{bot_info['username']}
+📝 **Name**: {bot_info.get('first_name', 'N/A')}
+
+🎉 **Your bot is ready!**
+
+**Next Steps:**
+1. Go to your bot: [Open @{bot_info['username']}]({bot_link})
+2. Click "Start" or send /start
+3. Your bot is now ready to receive subscribers!
+
+**What you can do:**
+📣 Send broadcasts to subscribers
+👥 View subscriber list
+📊 Check statistics
+🎨 Create button menus
+
+**Quick Actions:**
+"""
+        
+        # Success message with keyboard
         await status_msg.edit_text(
-            format_bot_created_message(new_bot),
+            success_text,
             reply_markup=create_bot_management_keyboard(new_bot.id),
-            parse_mode='Markdown'
+            parse_mode='Markdown',
+            disable_web_page_preview=True
         )
         
         return ConversationHandler.END
         
     except Exception as e:
+        logger.error(f"Error creating bot: {e}")
         await update.message.reply_text(
             format_error_message(f"Error creating bot: {str(e)}"),
             parse_mode='Markdown'
         )
+
         return ConversationHandler.END
     finally:
         db.close()
@@ -331,6 +390,14 @@ async def confirm_delete_bot(update: Update, context: ContextTypes.DEFAULT_TYPE)
         
         # Escape username to handle underscores in Markdown
         bot_username = escape_markdown(bot.bot_username)
+        
+        # Remove webhook before deleting
+        try:
+            token = decrypt_token(bot.bot_token)
+            await remove_webhook(token, bot.bot_username)
+            logger.info(f"Webhook removed for @{bot.bot_username}")
+        except Exception as e:
+            logger.warning(f"Could not remove webhook for @{bot.bot_username}: {e}")
         
         # Delete bot (cascades to all related data)
         db.delete(bot)
