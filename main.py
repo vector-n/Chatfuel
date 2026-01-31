@@ -2,16 +2,17 @@
 ChatFuel Bot - Main Entry Point
 
 A Telegram bot manager that helps users create and manage their own broadcast bots.
+Includes webhook server for handling created bots.
 """
 
 import logging
+import asyncio
+from threading import Thread
 from telegram import Update
 from telegram.ext import (
     Application,
     CommandHandler,
     CallbackQueryHandler,
-    MessageHandler,
-    filters,
 )
 
 # Configuration
@@ -21,7 +22,7 @@ from config.constants import CALLBACK_PREFIX
 # Database
 from database import init_db
 
-# Handlers
+# Main bot handlers
 from handlers.start import start_command, main_menu_callback
 from handlers.bot_management import (
     my_bots_command,
@@ -41,6 +42,9 @@ from handlers.help import (
     show_tutorial_tokens,
     show_tutorial_sharing,
 )
+
+# Webhook server for created bots
+from handlers.webhook_router import app as webhook_app
 
 # Configure logging
 logging.basicConfig(
@@ -64,6 +68,18 @@ async def error_handler(update: Update, context):
             pass
 
 
+def start_webhook_server_thread():
+    """Start Flask webhook server in a separate thread."""
+    logger.info("🌐 Starting webhook server for created bots...")
+    
+    # Run Flask app
+    webhook_app.run(
+        host='0.0.0.0',
+        port=settings.WEBHOOK_PORT,
+        debug=False
+    )
+
+
 def main():
     """Start the bot."""
     try:
@@ -75,7 +91,7 @@ def main():
         init_db()
         logger.info("✅ Database initialized successfully")
         
-        # Create application
+        # Create application for main bot
         application = Application.builder().token(settings.BOT_TOKEN).build()
         
         # Add command handlers
@@ -153,29 +169,34 @@ def main():
         # Error handler
         application.add_error_handler(error_handler)
         
-        # Start the bot
         logger.info("🚀 Starting ChatFuel Bot...")
         logger.info(f"Environment: {settings.ENVIRONMENT}")
         logger.info(f"Bot username: @{settings.BOT_USERNAME}")
         
         if settings.USE_WEBHOOK:
             # Production mode with webhook
-            webhook_url = settings.WEBHOOK_URL
-            logger.info(f"📡 Webhook mode enabled")
-            logger.info(f"📍 Webhook URL: {webhook_url}")
-            logger.info(f"🔌 Listening on port: {settings.WEBHOOK_PORT}")
+            logger.info(f"📡 Webhook URL: {settings.WEBHOOK_URL}")
             
-            # Start webhook server (will set webhook automatically)
+            # Start webhook server in background thread for created bots
+            webhook_thread = Thread(target=start_webhook_server_thread, daemon=True)
+            webhook_thread.start()
+            
+            # Start main bot with webhook
             application.run_webhook(
                 listen="0.0.0.0",
-                port=settings.WEBHOOK_PORT,
-                url_path="",
-                webhook_url=webhook_url,
-                drop_pending_updates=True,
+                port=8080,  # Main bot on port 8080
+                url_path=settings.BOT_TOKEN,
+                webhook_url=f"{settings.WEBHOOK_URL}/{settings.BOT_TOKEN}"
             )
         else:
             # Development mode with polling
-            logger.info("📡 Polling mode enabled (local development)")
+            logger.info("🔄 Using polling mode (development)")
+            
+            # Start webhook server in background for created bots (still needed)
+            webhook_thread = Thread(target=start_webhook_server_thread, daemon=True)
+            webhook_thread.start()
+            
+            # Run main bot with polling
             application.run_polling(allowed_updates=Update.ALL_TYPES)
             
     except Exception as e:
