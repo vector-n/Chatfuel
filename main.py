@@ -160,14 +160,22 @@ def main():
         
         if settings.USE_WEBHOOK:
             # Production mode with webhook
+            webhook_url = settings.WEBHOOK_URL
+            logger.info(f"📡 Webhook mode enabled")
+            logger.info(f"📍 Webhook URL: {webhook_url}")
+            logger.info(f"🔌 Listening on port: {settings.WEBHOOK_PORT}")
+            
+            # Start webhook server (will set webhook automatically)
             application.run_webhook(
                 listen="0.0.0.0",
                 port=settings.WEBHOOK_PORT,
-                url_path=settings.BOT_TOKEN,
-                webhook_url=f"{settings.WEBHOOK_URL}/{settings.BOT_TOKEN}"
+                url_path="",
+                webhook_url=webhook_url,
+                drop_pending_updates=True,
             )
         else:
             # Development mode with polling
+            logger.info("📡 Polling mode enabled (local development)")
             application.run_polling(allowed_updates=Update.ALL_TYPES)
             
     except Exception as e:
