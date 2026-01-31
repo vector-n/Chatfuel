@@ -44,11 +44,16 @@ class Settings:
     
     # Webhook (for production)
     WEBHOOK_URL: str = os.getenv('WEBHOOK_URL', '')
-    WEBHOOK_PORT: int = int(os.getenv('WEBHOOK_PORT', '8443'))
+    WEBHOOK_PORT: int = int(os.getenv('PORT', os.getenv('WEBHOOK_PORT', '8080')))
     
     @property
     def USE_WEBHOOK(self) -> bool:
         """Use webhook in production, polling in development."""
+        use_webhook = os.getenv('USE_WEBHOOK', '').lower()
+        if use_webhook in ('true', '1', 'yes'):
+            return True
+        elif use_webhook in ('false', '0', 'no'):
+            return False
         return self.ENVIRONMENT == 'production'
     
     # Logging
@@ -62,6 +67,11 @@ class Settings:
 settings = Settings()
 
 
+import logging
+
+logger = logging.getLogger(__name__)
+
+
 def validate_settings():
     """Validate that all required settings are present."""
     errors = []
@@ -72,13 +82,27 @@ def validate_settings():
     if not settings.DATABASE_URL:
         errors.append("DATABASE_URL is required")
     
-    if settings.ENVIRONMENT == 'production':
+    # Check webhook configuration
+    if settings.USE_WEBHOOK:
         if not settings.WEBHOOK_URL:
-            errors.append("WEBHOOK_URL is required in production")
+            errors.append("WEBHOOK_URL is required when USE_WEBHOOK is true")
+        elif not settings.WEBHOOK_URL.startswith('https://'):
+            errors.append("WEBHOOK_URL must use HTTPS")
+        
+        logger.info(f"✅ Webhook URL configured: {settings.WEBHOOK_URL}")
+        logger.info(f"✅ Webhook port: {settings.WEBHOOK_PORT}")
+    else:
+        logger.info("ℹ️  Running in polling mode (local development)")
+    
+    if settings.ENVIRONMENT == 'production':
         if settings.SECRET_KEY == 'change-me-in-production':
             errors.append("SECRET_KEY must be changed in production")
+        
+        if not settings.ENCRYPTION_KEY:
+            logger.warning("⚠️  ENCRYPTION_KEY not set - bot tokens will not be encrypted!")
     
     if errors:
         raise ValueError(f"Configuration errors: {', '.join(errors)}")
     
+    logger.info("✅ All settings validated successfully")
     return True
