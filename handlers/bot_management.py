@@ -179,7 +179,8 @@ async def receive_bot_token(
         )
         
         # Check bot limit FIRST before validating
-        can_create, limit_msg = check_limit(user, 'max_bots', db)
+        current_bot_count = len(user.bots)
+        can_create, limit_msg = check_limit(user, 'max_bots', current_bot_count)
         
         if not can_create:
             await status_msg.edit_text(
