@@ -17,63 +17,81 @@ class SubscriptionTier(str, Enum):
 
 TIER_LIMITS = {
     SubscriptionTier.FREE: {
-        'max_bots': 3,
-        'max_admins_per_bot': 2,
-        'max_custom_menus': 3,
-        'max_active_forms': 1,
-        'max_form_questions': 5,
-        'max_form_responses_per_month': 20,
+        'max_bots': 1,  # Limited to 1 bot for free tier
+        'max_subscribers_per_bot': 100,  # Max 100 subscribers
+        'max_broadcasts_per_day': 3,  # 3 broadcasts per day
+        'max_admins_per_bot': 0,  # No admins for free tier
+        'max_custom_menus': 1,  # Only 1 menu
+        'max_buttons_per_menu': 3,  # Max 3 buttons per menu
+        'max_active_forms': 0,  # No forms
+        'max_form_questions': 0,
+        'max_form_responses_per_month': 0,
         'max_scheduled_posts_per_month': 0,
         'max_autopost_sources': 0,
         'can_export_data': False,
-        'can_use_webhooks': False,
+        'can_use_webhooks': True,  # Webhooks enabled (required for functionality)
         'can_ab_test': False,
         'ab_test_variants': 0,
         'has_analytics': True,
         'advanced_analytics': False,
         'white_label': False,
         'priority_support': False,
+        'can_broadcast_photo': True,  # Can send photos
+        'can_broadcast_video': False,  # No videos for free tier
     },
     SubscriptionTier.BASIC: {
-        'max_bots': 10,
-        'max_admins_per_bot': 5,
-        'max_custom_menus': -1,  # -1 means unlimited
-        'max_active_forms': 3,
+        'max_bots': 3,  # 3 bots
+        'max_subscribers_per_bot': 1000,  # 1,000 subscribers per bot
+        'max_broadcasts_per_day': 10,  # 10 broadcasts per day
+        'max_admins_per_bot': 2,
+        'max_custom_menus': 5,
+        'max_buttons_per_menu': 10,
+        'max_active_forms': 2,
         'max_form_questions': 10,
         'max_form_responses_per_month': 100,
-        'max_scheduled_posts_per_month': 10,
+        'max_scheduled_posts_per_month': 5,
         'max_autopost_sources': 0,
         'can_export_data': True,
-        'can_use_webhooks': False,
+        'can_use_webhooks': True,
         'can_ab_test': False,
         'ab_test_variants': 0,
         'has_analytics': True,
         'advanced_analytics': True,
         'white_label': False,
         'priority_support': False,
+        'can_broadcast_photo': True,
+        'can_broadcast_video': True,  # Videos enabled
     },
     SubscriptionTier.ADVANCED: {
-        'max_bots': 20,
-        'max_admins_per_bot': 10,
-        'max_custom_menus': -1,
+        'max_bots': 10,  # 10 bots
+        'max_subscribers_per_bot': 10000,  # 10,000 subscribers per bot
+        'max_broadcasts_per_day': -1,  # Unlimited broadcasts
+        'max_admins_per_bot': 5,
+        'max_custom_menus': -1,  # Unlimited menus
+        'max_buttons_per_menu': -1,  # Unlimited buttons
         'max_active_forms': 10,
         'max_form_questions': -1,
         'max_form_responses_per_month': 1000,
         'max_scheduled_posts_per_month': -1,
-        'max_autopost_sources': 1,
+        'max_autopost_sources': 2,
         'can_export_data': True,
-        'can_use_webhooks': False,
+        'can_use_webhooks': True,
         'can_ab_test': True,
         'ab_test_variants': 2,
         'has_analytics': True,
         'advanced_analytics': True,
         'white_label': False,
         'priority_support': True,
+        'can_broadcast_photo': True,
+        'can_broadcast_video': True,
     },
     SubscriptionTier.BUSINESS: {
-        'max_bots': -1,
+        'max_bots': -1,  # Unlimited bots
+        'max_subscribers_per_bot': -1,  # Unlimited subscribers
+        'max_broadcasts_per_day': -1,  # Unlimited broadcasts
         'max_admins_per_bot': -1,
         'max_custom_menus': -1,
+        'max_buttons_per_menu': -1,
         'max_active_forms': -1,
         'max_form_questions': -1,
         'max_form_responses_per_month': -1,
@@ -87,6 +105,8 @@ TIER_LIMITS = {
         'advanced_analytics': True,
         'white_label': True,
         'priority_support': True,
+        'can_broadcast_photo': True,
+        'can_broadcast_video': True,
     }
 }
 
