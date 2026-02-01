@@ -105,6 +105,16 @@ def webhook_handler(bot_username: str):
 
 _ptb_application = None
 
+# One long-lived event loop shared by initialize() and every process_update().
+# PTB's httpx client binds to the loop it first sees; reusing this loop
+# avoids the "Event loop is closed" crash on subsequent requests.
+_ptb_loop = asyncio.new_event_loop()
+
+
+def get_ptb_loop() -> asyncio.AbstractEventLoop:
+    """Return the shared PTB event loop (used by main.py for initialize())."""
+    return _ptb_loop
+
 
 @app.route('/<path:token_path>', methods=['POST'])
 def main_bot_webhook(token_path):
@@ -122,12 +132,8 @@ def main_bot_webhook(token_path):
     if not update_data:
         return jsonify({"error": "Empty"}), 400
 
-    loop = asyncio.new_event_loop()
-    try:
-        update = Update.de_json(update_data, _ptb_application.bot)
-        loop.run_until_complete(_ptb_application.process_update(update))
-    finally:
-        loop.close()
+    update = Update.de_json(update_data, _ptb_application.bot)
+    _ptb_loop.run_until_complete(_ptb_application.process_update(update))
 
     return jsonify({"ok": True}), 200
 
