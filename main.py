@@ -151,8 +151,10 @@ def main():
 
         if settings.USE_WEBHOOK:
             # --- PRODUCTION ---
-            # Tell Telegram to POST main-bot updates to our server
+            # Initialize the Application (required before process_update works)
+            # and tell Telegram where to POST updates.
             loop = asyncio.new_event_loop()
+            loop.run_until_complete(application.initialize())
             loop.run_until_complete(set_main_bot_webhook(application))
             loop.close()
 
