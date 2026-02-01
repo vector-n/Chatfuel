@@ -17,7 +17,6 @@ from services.subscriber_service import (
     get_subscribers,
     get_subscriber_stats
 )
-from services.bot_setup import update_bot_description, update_bot_commands
 from utils.helpers import escape_markdown, format_datetime
 from config.constants import EMOJI
 
