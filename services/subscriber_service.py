@@ -43,7 +43,6 @@ def create_or_update_subscriber(
         subscriber.username = user_info.get('username')
         subscriber.first_name = user_info.get('first_name')
         subscriber.last_name = user_info.get('last_name')
-        subscriber.language = user_info.get('language', 'en')
         subscriber.last_interaction = datetime.utcnow()
         
         # Reactivate if was inactive
@@ -65,7 +64,6 @@ def create_or_update_subscriber(
             username=user_info.get('username'),
             first_name=user_info.get('first_name'),
             last_name=user_info.get('last_name'),
-            language=user_info.get('language', 'en'),
             subscribed_at=datetime.utcnow(),
             last_interaction=datetime.utcnow(),
             is_active=True,
