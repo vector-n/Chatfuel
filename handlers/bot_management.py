@@ -107,13 +107,8 @@ async def add_bot_start(
     user
 ):
     """
-    Start the add bot conversation.
-    
-    Args:
-        update: Telegram update
-        context: Callback context
-        db: Database session
-        user: User instance
+    Start the add bot flow — sets user_data state so the next plain text
+    message is captured by waiting_for_token_handler.
     """
     # Check if user has reached bot limit
     bot_count = len(user.bots)
@@ -122,13 +117,13 @@ async def add_bot_start(
     if not can_create:
         if update.callback_query:
             await update.callback_query.answer(error_msg, show_alert=True)
-            return ConversationHandler.END
+            return
         else:
             await update.message.reply_text(
                 format_limit_reached_message("bots", bot_count, user.premium_tier),
                 parse_mode='Markdown'
             )
-            return ConversationHandler.END
+            return
     
     text = f"""{EMOJI['add']} **Create New Bot**
 
@@ -144,13 +139,14 @@ To create a bot, I need your bot token from @BotFather.
 Send me your bot token now:
 """
     
+    # Mark this user as waiting for a token
+    context.user_data['waiting_for_bot_token'] = True
+    
     if update.callback_query:
         await update.callback_query.answer()
         await update.callback_query.message.reply_text(text, parse_mode='Markdown')
     else:
         await update.message.reply_text(text, parse_mode='Markdown')
-    
-    return WAITING_FOR_TOKEN
 
 
 async def receive_bot_token(
@@ -163,6 +159,9 @@ async def receive_bot_token(
     Args:
         update: Telegram update
         context: Callback context
+    # Clear the waiting flag immediately so only this one message is consumed
+    context.user_data.pop('waiting_for_bot_token', None)
+
     """
     from database import get_db
     from utils.helpers import get_user_or_create
@@ -191,7 +190,7 @@ async def receive_bot_token(
                 ),
                 parse_mode='Markdown'
             )
-            return ConversationHandler.END
+            return
         
         # Validate token
         is_valid, bot_info, error = await validate_bot_token(token)
@@ -201,7 +200,9 @@ async def receive_bot_token(
                 format_error_message(f"Invalid bot token: {error}"),
                 parse_mode='Markdown'
             )
-            return WAITING_FOR_TOKEN
+            # Re-set flag so user can retry
+            context.user_data['waiting_for_bot_token'] = True
+            return
         
         # Check if bot already exists
         existing = db.query(Bot).filter(Bot.bot_username == bot_info['username']).first()
@@ -210,7 +211,7 @@ async def receive_bot_token(
                 format_error_message(f"This bot (@{bot_info['username']}) is already registered!"),
                 parse_mode='Markdown'
             )
-            return ConversationHandler.END
+            return
         
         # Update status message
         await status_msg.edit_text(
@@ -271,7 +272,6 @@ async def receive_bot_token(
             disable_web_page_preview=True
         )
         
-        return ConversationHandler.END
         
     except Exception as e:
         logger.error(f"Error creating bot: {e}")
@@ -280,18 +280,17 @@ async def receive_bot_token(
             parse_mode='Markdown'
         )
 
-        return ConversationHandler.END
     finally:
         db.close()
 
 
 async def cancel_add_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Cancel add bot conversation."""
+    """Cancel add bot flow — clears the waiting flag."""
+    context.user_data.pop('waiting_for_bot_token', None)
     await update.message.reply_text(
         f"{EMOJI['cancel']} Bot creation cancelled.",
         parse_mode='Markdown'
     )
-    return ConversationHandler.END
 
 
 async def select_bot_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -412,20 +411,7 @@ async def confirm_delete_bot(update: Update, context: ContextTypes.DEFAULT_TYPE)
         db.close()
 
 
-# Conversation handler for adding bots
-from telegram.ext import CommandHandler, MessageHandler, CallbackQueryHandler, filters, ConversationHandler
+# Guard function: returns True only when user is waiting for a bot token
+def _waiting_for_token(update, context):
+    return context.user_data.get('waiting_for_bot_token', False)
 
-add_bot_conversation = ConversationHandler(
-    entry_points=[
-        CommandHandler('addbot', add_bot_start),
-        CallbackQueryHandler(add_bot_start, pattern='^bot_create_new$'),
-    ],
-    states={
-        WAITING_FOR_TOKEN: [
-            MessageHandler(filters.TEXT & ~filters.COMMAND, receive_bot_token),
-        ],
-    },
-    fallbacks=[
-        CommandHandler('cancel', cancel_add_bot),
-    ],
-)
