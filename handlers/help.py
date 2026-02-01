@@ -82,7 +82,7 @@ async def show_help_quickstart(update: Update, context: ContextTypes.DEFAULT_TYP
 **Step 3: Share Your Bot**
 1. Go to /mybots
 2. Click on your bot
-3. Share the link @your\_bot\_username
+3. Share the link @your_bot_username
 
 **What's Next?**
 • Create button menus (coming soon)
@@ -312,7 +312,7 @@ async def show_tutorial_first_bot(update: Update, context: ContextTypes.DEFAULT_
 3. BotFather asks: "Choose a name"
    → Type: My First Bot
 4. BotFather asks: "Choose a username"
-   → Type: myfirstbot123\_bot
+   → Type: myfirstbot123_bot
    (Must end with 'bot', must be unique)
 5. BotFather gives you a token like:
    `1234567890:ABCdefGHIjklMNOpqr`
