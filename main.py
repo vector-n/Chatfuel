@@ -19,6 +19,8 @@ from telegram.ext import (
     Application,
     CommandHandler,
     CallbackQueryHandler,
+    MessageHandler,
+    filters,
 )
 
 # Configuration
@@ -32,7 +34,10 @@ from database import init_db
 from handlers.start import start_command, main_menu_callback
 from handlers.bot_management import (
     my_bots_command,
-    add_bot_conversation,
+    add_bot_start,
+    receive_bot_token,
+    cancel_add_bot,
+    _waiting_for_token,
     select_bot_callback,
     delete_bot_callback,
     confirm_delete_bot,
@@ -81,8 +86,14 @@ def build_application() -> Application:
     application.add_handler(CommandHandler("help", show_help_menu))
     application.add_handler(CommandHandler("mybots", my_bots_command))
 
-    # --- Conversation handler (add bot flow) ---
-    application.add_handler(add_bot_conversation)
+    # --- Add-bot flow: callback entry + user_data-gated message handler ---
+    application.add_handler(CallbackQueryHandler(add_bot_start, pattern='^bot_create_new$'))
+    application.add_handler(CommandHandler("addbot", add_bot_start))
+    application.add_handler(CommandHandler("cancel", cancel_add_bot))
+    application.add_handler(MessageHandler(
+        filters.TEXT & ~filters.COMMAND & filters.UpdateFilter(_waiting_for_token),
+        receive_bot_token
+    ))
 
     # --- Callback handlers: main menu ---
     application.add_handler(CallbackQueryHandler(
