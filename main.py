@@ -50,7 +50,7 @@ from handlers.help import (
 )
 
 # The single Flask app that serves all webhooks
-from handlers.webhook_router import app as flask_app, set_ptb_application
+from handlers.webhook_router import app as flask_app, set_ptb_application, get_ptb_loop
 
 # Configure logging
 logging.basicConfig(
@@ -153,10 +153,11 @@ def main():
             # --- PRODUCTION ---
             # Initialize the Application (required before process_update works)
             # and tell Telegram where to POST updates.
-            loop = asyncio.new_event_loop()
-            loop.run_until_complete(application.initialize())
-            loop.run_until_complete(set_main_bot_webhook(application))
-            loop.close()
+            # Use the same long-lived loop that webhook_router reuses per-request;
+            # PTB's httpx client binds to this loop and must not see it closed.
+            ptb_loop = get_ptb_loop()
+            ptb_loop.run_until_complete(application.initialize())
+            ptb_loop.run_until_complete(set_main_bot_webhook(application))
 
             # Start the single Flask server.  It handles:
             #   POST /webhook/<username>  -> created bots
