@@ -37,7 +37,6 @@ from handlers.bot_management import (
     add_bot_start,
     receive_bot_token,
     cancel_add_bot,
-    _waiting_for_token,
     select_bot_callback,
     delete_bot_callback,
     confirm_delete_bot,
@@ -102,14 +101,30 @@ def build_application() -> Application:
     application.add_handler(CommandHandler("help", show_help_menu))
     application.add_handler(CommandHandler("mybots", my_bots_command))
 
-    # --- Add-bot flow: callback entry + user_data-gated message handler ---
-    application.add_handler(CallbackQueryHandler(add_bot_start, pattern='^bot_create_new$'))
-    application.add_handler(CommandHandler("addbot", add_bot_start))
-    application.add_handler(CommandHandler("cancel", cancel_add_bot))
-    application.add_handler(MessageHandler(
-        filters.TEXT & ~filters.COMMAND & filters.UpdateFilter(_waiting_for_token),
-        receive_bot_token
-    ))
+    # --- Add-bot flow: ConversationHandler for proper state management ---
+    from telegram.ext import ConversationHandler
+    from handlers.bot_management import WAITING_FOR_TOKEN
+    
+    conv_handler = ConversationHandler(
+        entry_points=[
+            CallbackQueryHandler(add_bot_start, pattern='^bot_create_new$'),
+            CommandHandler("addbot", add_bot_start)
+        ],
+        states={
+            WAITING_FOR_TOKEN: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, receive_bot_token)
+            ]
+        },
+        fallbacks=[CommandHandler("cancel", cancel_add_bot)],
+        # CRITICAL: Use per-user conversation so each user has their own state
+        per_user=True,
+        per_chat=False,
+        # Allow the conversation to persist across bot restarts
+        name="add_bot_conversation",
+        persistent=True
+    )
+    
+    application.add_handler(conv_handler)
 
     # --- Callback handlers: main menu ---
     application.add_handler(CallbackQueryHandler(
