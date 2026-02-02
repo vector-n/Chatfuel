@@ -159,10 +159,11 @@ async def receive_bot_token(
     Args:
         update: Telegram update
         context: Callback context
+    """
     # Clear the waiting flag immediately so only this one message is consumed
     context.user_data.pop('waiting_for_bot_token', None)
 
-    """
+    
     from database import get_db
     from utils.helpers import get_user_or_create
     
