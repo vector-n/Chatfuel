@@ -80,9 +80,15 @@ async def error_handler(update: Update, context):
 def build_application() -> Application:
     """Build and return the python-telegram-bot Application with all handlers."""
     from telegram.ext import PicklePersistence
+    import os
+    
+    # Create persistence directory if it doesn't exist
+    persistence_dir = '/app/data'
+    os.makedirs(persistence_dir, exist_ok=True)
+    logger.info(f"Persistence directory ensured at: {persistence_dir}")
     
     # Create persistence to maintain user_data across webhook requests
-    persistence = PicklePersistence(filepath='/app/data/bot_persistence.pickle')
+    persistence = PicklePersistence(filepath=f'{persistence_dir}/bot_persistence.pickle')
     
     application = (
         Application.builder()
