@@ -135,18 +135,40 @@ def main_bot_webhook(token_path):
     try:
         update = Update.de_json(update_data, _ptb_application.bot)
         
+        # DEBUG: Log what type of update we received
+        update_type = "unknown"
+        user_id = "unknown"
+        content = "no content"
+        
+        if update.message:
+            update_type = "message"
+            user_id = update.message.from_user.id
+            content = update.message.text or update.message.caption or "[non-text]"
+        elif update.callback_query:
+            update_type = "callback_query"
+            user_id = update.callback_query.from_user.id
+            content = update.callback_query.data
+        elif update.edited_message:
+            update_type = "edited_message"
+            user_id = update.edited_message.from_user.id
+            content = "edited"
+        
+        logger.info(f"🔵 WEBHOOK RECEIVED: type={update_type}, user={user_id}, content={content[:50]}")
+        
         # Process the update
         _ptb_loop.run_until_complete(_ptb_application.process_update(update))
+        
+        logger.info(f"🟢 UPDATE PROCESSED: type={update_type}, user={user_id}")
         
         # CRITICAL: Flush persistence after each update so user_data is saved
         if _ptb_application.persistence:
             _ptb_loop.run_until_complete(_ptb_application.persistence.flush())
-            logger.debug("Persistence flushed after update")
+            logger.info(f"💾 PERSISTENCE FLUSHED after {update_type}")
         
         return jsonify({"ok": True}), 200
         
     except Exception as e:
-        logger.error(f"Error processing main bot update: {e}", exc_info=True)
+        logger.error(f"❌ Error processing main bot update: {e}", exc_info=True)
         return jsonify({"error": "Processing error"}), 500
 
 
