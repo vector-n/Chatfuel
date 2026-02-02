@@ -243,36 +243,38 @@ async def receive_bot_token(
             # Webhook setup failed, but bot is created
             success_text = format_bot_created_message(new_bot)
             success_text += f"\n\n⚠️ Note: Webhook setup had issues. The bot may need reconfiguration."
+            parse_mode = 'Markdown'
         else:
-            # Enhanced success message with instructions
+            # Enhanced success message with instructions - using HTML to avoid markdown issues
             bot_link = generate_bot_start_link(bot_info['username'])
             
-            success_text = f"""✅ **Bot Created Successfully!**
+            success_text = f"""✅ <b>Bot Created Successfully!</b>
 
-🤖 **Bot**: @{bot_info['username']}
-📝 **Name**: {bot_info.get('first_name', 'N/A')}
+🤖 <b>Bot</b>: @{bot_info['username']}
+📝 <b>Name</b>: {bot_info.get('first_name', 'N/A')}
 
-🎉 **Your bot is ready!**
+🎉 <b>Your bot is ready!</b>
 
-**Next Steps:**
-1. Go to your bot: [Open @{bot_info['username']}]({bot_link})
+<b>Next Steps:</b>
+1. Go to your bot: https://t.me/{bot_info['username']}
 2. Click "Start" or send /start
 3. Your bot is now ready to receive subscribers!
 
-**What you can do:**
+<b>What you can do:</b>
 📣 Send broadcasts to subscribers
 👥 View subscriber list
 📊 Check statistics
 🎨 Create button menus
 
-**Quick Actions:**
+<b>Quick Actions:</b>
 """
+            parse_mode = 'HTML'
         
         # Success message with keyboard
         await status_msg.edit_text(
             success_text,
             reply_markup=create_bot_management_keyboard(new_bot.id),
-            parse_mode='Markdown',
+            parse_mode=parse_mode,
             disable_web_page_preview=True
         )
         
