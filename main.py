@@ -79,7 +79,17 @@ async def error_handler(update: Update, context):
 
 def build_application() -> Application:
     """Build and return the python-telegram-bot Application with all handlers."""
-    application = Application.builder().token(settings.BOT_TOKEN).build()
+    from telegram.ext import PicklePersistence
+    
+    # Create persistence to maintain user_data across webhook requests
+    persistence = PicklePersistence(filepath='/app/data/bot_persistence.pickle')
+    
+    application = (
+        Application.builder()
+        .token(settings.BOT_TOKEN)
+        .persistence(persistence)
+        .build()
+    )
 
     # --- Command handlers ---
     application.add_handler(CommandHandler("start", start_command))
