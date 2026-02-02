@@ -81,7 +81,6 @@ class Bot(Base):
     
     # Bot settings
     description = Column(Text)
-    welcome_message = Column(Text)  # Custom welcome message for subscribers
     language = Column(String(10), default='en')
     is_active = Column(Boolean, default=True)
     webhook_url = Column(String(500))
