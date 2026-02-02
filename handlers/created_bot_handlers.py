@@ -74,6 +74,11 @@ async def handle_created_bot_update(
         user_type = "OWNER" if is_owner else "SUBSCRIBER"
         logger.info(f"👤 {user_type} interaction: {user_telegram_id} → @{bot_model.bot_username}")
         
+        # PHASE 2B: Create context for broadcast state management
+        from types import SimpleNamespace
+        context_data = SimpleNamespace()
+        context_data.user_data = {}
+        
         # Route to appropriate handler
         if is_owner:
             # Owner gets admin features
@@ -82,7 +87,8 @@ async def handle_created_bot_update(
                 update=update,
                 telegram_bot=telegram_bot,
                 db=db,
-                subscriber=subscriber
+                subscriber=subscriber,
+                context=context_data  # PHASE 2B: Pass context for broadcast composition
             )
         else:
             # Regular subscriber gets public features
