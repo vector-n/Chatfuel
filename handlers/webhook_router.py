@@ -132,10 +132,22 @@ def main_bot_webhook(token_path):
     if not update_data:
         return jsonify({"error": "Empty"}), 400
 
-    update = Update.de_json(update_data, _ptb_application.bot)
-    _ptb_loop.run_until_complete(_ptb_application.process_update(update))
-
-    return jsonify({"ok": True}), 200
+    try:
+        update = Update.de_json(update_data, _ptb_application.bot)
+        
+        # Process the update
+        _ptb_loop.run_until_complete(_ptb_application.process_update(update))
+        
+        # CRITICAL: Flush persistence after each update so user_data is saved
+        if _ptb_application.persistence:
+            _ptb_loop.run_until_complete(_ptb_application.persistence.flush())
+            logger.debug("Persistence flushed after update")
+        
+        return jsonify({"ok": True}), 200
+        
+    except Exception as e:
+        logger.error(f"Error processing main bot update: {e}", exc_info=True)
+        return jsonify({"error": "Processing error"}), 500
 
 
 def set_ptb_application(application):
