@@ -1,4 +1,10 @@
-"""Bot management handlers - create, list, delete bots."""
+"""Bot management handlers - FIXED VERSION using ConversationHandler
+
+The issue: In webhook mode, filters are checked BEFORE persistence is loaded,
+so context.user_data is empty when the filter runs. 
+
+Solution: Use ConversationHandler which properly handles state persistence.
+"""
 
 import logging
 from telegram import Update
@@ -107,9 +113,11 @@ async def add_bot_start(
     user
 ):
     """
-    Start the add bot flow — sets user_data state so the next plain text
-    message is captured by waiting_for_token_handler.
+    Start the add bot flow — now returns WAITING_FOR_TOKEN state
+    for ConversationHandler to track.
     """
+    logger.info(f"🟡 add_bot_start called for user {update.effective_user.id}")
+    
     # Check if user has reached bot limit
     bot_count = len(user.bots)
     can_create, error_msg = check_limit(user, 'max_bots', bot_count)
@@ -117,13 +125,13 @@ async def add_bot_start(
     if not can_create:
         if update.callback_query:
             await update.callback_query.answer(error_msg, show_alert=True)
-            return
+            return ConversationHandler.END
         else:
             await update.message.reply_text(
                 format_limit_reached_message("bots", bot_count, user.premium_tier),
                 parse_mode='Markdown'
             )
-            return
+            return ConversationHandler.END
     
     text = f"""{EMOJI['add']} **Create New Bot**
 
@@ -139,16 +147,14 @@ To create a bot, I need your bot token from @BotFather.
 Send me your bot token now:
 """
     
-    # Mark this user as waiting for a token
-    context.user_data['waiting_for_bot_token'] = True
-    logger.info(f"🟢 add_bot_start: Set waiting_for_bot_token=True for user {update.effective_user.id}")
-    logger.info(f"🟢 context.user_data contents: {context.user_data}")
-    
     if update.callback_query:
         await update.callback_query.answer()
         await update.callback_query.message.reply_text(text, parse_mode='Markdown')
     else:
         await update.message.reply_text(text, parse_mode='Markdown')
+    
+    logger.info(f"🟡 add_bot_start returning WAITING_FOR_TOKEN state")
+    return WAITING_FOR_TOKEN
 
 
 async def receive_bot_token(
@@ -157,17 +163,10 @@ async def receive_bot_token(
 ):
     """
     Receive and validate bot token.
-    
-    Args:
-        update: Telegram update
-        context: Callback context
+    Called by ConversationHandler when in WAITING_FOR_TOKEN state.
     """
     logger.info(f"🔵 receive_bot_token called! User: {update.effective_user.id}")
-    logger.info(f"🔵 waiting_for_bot_token flag: {context.user_data.get('waiting_for_bot_token', False)}")
-    
-    # Clear the waiting flag immediately so only this one message is consumed
-    context.user_data.pop('waiting_for_bot_token', None)
-
+    logger.info(f"🔵 Message text: {update.message.text[:50]}")
     
     from database import get_db
     from utils.helpers import get_user_or_create
@@ -196,7 +195,7 @@ async def receive_bot_token(
                 ),
                 parse_mode='Markdown'
             )
-            return
+            return ConversationHandler.END
         
         # Validate token
         is_valid, bot_info, error = await validate_bot_token(token)
@@ -206,9 +205,8 @@ async def receive_bot_token(
                 format_error_message(f"Invalid bot token: {error}"),
                 parse_mode='Markdown'
             )
-            # Re-set flag so user can retry
-            context.user_data['waiting_for_bot_token'] = True
-            return
+            # Stay in WAITING_FOR_TOKEN state so user can retry
+            return WAITING_FOR_TOKEN
         
         # Check if bot already exists
         existing = db.query(Bot).filter(Bot.bot_username == bot_info['username']).first()
@@ -217,7 +215,7 @@ async def receive_bot_token(
                 format_error_message(f"This bot (@{bot_info['username']}) is already registered!"),
                 parse_mode='Markdown'
             )
-            return
+            return ConversationHandler.END
         
         # Update status message
         await status_msg.edit_text(
@@ -278,6 +276,7 @@ async def receive_bot_token(
             disable_web_page_preview=True
         )
         
+        return ConversationHandler.END
         
     except Exception as e:
         logger.error(f"Error creating bot: {e}")
@@ -285,18 +284,19 @@ async def receive_bot_token(
             format_error_message(f"Error creating bot: {str(e)}"),
             parse_mode='Markdown'
         )
+        return ConversationHandler.END
 
     finally:
         db.close()
 
 
 async def cancel_add_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Cancel add bot flow — clears the waiting flag."""
-    context.user_data.pop('waiting_for_bot_token', None)
+    """Cancel add bot flow."""
     await update.message.reply_text(
         f"{EMOJI['cancel']} Bot creation cancelled.",
         parse_mode='Markdown'
     )
+    return ConversationHandler.END
 
 
 async def select_bot_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -415,11 +415,3 @@ async def confirm_delete_bot(update: Update, context: ContextTypes.DEFAULT_TYPE)
         )
     finally:
         db.close()
-
-
-# Guard function: returns True only when user is waiting for a bot token
-def _waiting_for_token(update, context):
-    is_waiting = context.user_data.get('waiting_for_bot_token', False)
-    logger.info(f"🔍 Filter check: user {update.effective_user.id}, waiting_for_bot_token={is_waiting}")
-    return is_waiting
-
