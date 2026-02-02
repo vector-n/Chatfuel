@@ -141,6 +141,8 @@ Send me your bot token now:
     
     # Mark this user as waiting for a token
     context.user_data['waiting_for_bot_token'] = True
+    logger.info(f"🟢 add_bot_start: Set waiting_for_bot_token=True for user {update.effective_user.id}")
+    logger.info(f"🟢 context.user_data contents: {context.user_data}")
     
     if update.callback_query:
         await update.callback_query.answer()
@@ -160,6 +162,9 @@ async def receive_bot_token(
         update: Telegram update
         context: Callback context
     """
+    logger.info(f"🔵 receive_bot_token called! User: {update.effective_user.id}")
+    logger.info(f"🔵 waiting_for_bot_token flag: {context.user_data.get('waiting_for_bot_token', False)}")
+    
     # Clear the waiting flag immediately so only this one message is consumed
     context.user_data.pop('waiting_for_bot_token', None)
 
@@ -414,5 +419,7 @@ async def confirm_delete_bot(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 # Guard function: returns True only when user is waiting for a bot token
 def _waiting_for_token(update, context):
-    return context.user_data.get('waiting_for_bot_token', False)
+    is_waiting = context.user_data.get('waiting_for_bot_token', False)
+    logger.info(f"🔍 Filter check: user {update.effective_user.id}, waiting_for_bot_token={is_waiting}")
+    return is_waiting
 
