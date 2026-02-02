@@ -210,7 +210,7 @@ async def handle_admin_subscribers(bot_model, update, telegram_bot, db):
         for sub in subscribers:
             name = escape_markdown(sub.first_name or "Unknown")
             username = f"@{sub.username}" if sub.username else ""
-            joined = format_datetime(sub.created_at, include_time=False)
+            joined = format_datetime(sub.subscribed_at, include_time=False)
             text += f"\n• {name} {username} - {joined}"
     else:
         text += "\nNo subscribers yet."
