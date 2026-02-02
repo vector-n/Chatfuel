@@ -445,7 +445,8 @@ For now, your bot has these default commands:
 
 async def start_edit_welcome(bot_model, update, telegram_bot, db):
     """Start conversation to edit welcome message."""
-    current = escape_markdown(bot_model.welcome_message or "Default welcome message")
+    current_message = getattr(bot_model, 'welcome_message', None)
+    current = escape_markdown(current_message or "Default welcome message")
     
     text = f"""👋 **Edit Welcome Message**
 
