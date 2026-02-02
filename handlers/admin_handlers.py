@@ -17,6 +17,17 @@ from services.subscriber_service import (
     get_subscribers,
     get_subscriber_stats
 )
+# PHASE 2B: Broadcasting handlers
+from handlers.broadcast_handlers import (
+    handle_broadcast_menu,
+    start_text_broadcast,
+    start_photo_broadcast,
+    start_video_broadcast,
+    execute_broadcast,
+    show_broadcast_history,
+    cancel_broadcast,
+    receive_text_broadcast,
+)
 from utils.helpers import escape_markdown, format_datetime
 from config.constants import EMOJI
 
@@ -55,7 +66,8 @@ async def handle_admin_update(
     update: Update,
     telegram_bot: Bot,
     db: Session,
-    subscriber
+    subscriber,
+    context=None  # PHASE 2B: Added for broadcast state management
 ):
     """
     Route admin updates to appropriate handlers.
@@ -75,7 +87,7 @@ async def handle_admin_update(
             await handle_admin_start(bot_model, update, telegram_bot, db)
         
         elif text == '/broadcast':
-            await handle_admin_broadcast_menu(bot_model, update, telegram_bot, db)
+            await handle_broadcast_menu(bot_model, update, telegram_bot, db)  # PHASE 2B
         
         elif text == '/subscribers':
             await handle_admin_subscribers(bot_model, update, telegram_bot, db)
@@ -96,6 +108,13 @@ async def handle_admin_update(
             await handle_admin_help(bot_model, update, telegram_bot, db)
         
         else:
+            # PHASE 2B: Check if we're composing a broadcast
+            if context:
+                compose_data = context.user_data.get('broadcast_compose')
+                if compose_data and compose_data['type'] == 'text':
+                    await receive_text_broadcast(update, context)
+                    return
+            
             # Unknown command
             from handlers.created_bot_handlers import handle_unknown_command
             await handle_unknown_command(bot_model, update, telegram_bot, is_owner=True)
@@ -108,8 +127,28 @@ async def handle_admin_update(
         data = query.data
         
         if data.startswith('admin_broadcast_'):
-            await handle_admin_broadcast_menu(bot_model, update, telegram_bot, db)
+            await handle_broadcast_menu(bot_model, update, telegram_bot, db)  # PHASE 2B
         
+        # PHASE 2B: Broadcast composition callbacks
+        elif data.startswith('bc_text_'):
+            await start_text_broadcast(bot_model, update, telegram_bot, context)
+        
+        elif data.startswith('bc_photo_'):
+            await start_photo_broadcast(bot_model, update, telegram_bot, context)
+        
+        elif data.startswith('bc_video_'):
+            await start_video_broadcast(bot_model, update, telegram_bot, context)
+        
+        elif data.startswith('bc_send_'):
+            await execute_broadcast(bot_model, update, telegram_bot, context, db)
+        
+        elif data.startswith('bc_history_'):
+            await show_broadcast_history(bot_model, update, telegram_bot, db)
+        
+        elif data.startswith('bc_cancel_'):
+            await cancel_broadcast(bot_model, update, telegram_bot, context)
+        
+        # Original callbacks
         elif data.startswith('admin_subs_'):
             await handle_admin_subscribers(bot_model, update, telegram_bot, db)
         
@@ -156,39 +195,6 @@ async def handle_admin_start(bot_model, update, telegram_bot, db):
     await send_admin_welcome(bot_model, update, telegram_bot, db)
 
 
-async def handle_admin_broadcast_menu(bot_model, update, telegram_bot, db):
-    """Show broadcast menu (Phase 2B)."""
-    text = f"""{EMOJI['broadcast']} **Broadcasting**
-
-This feature will be available in Phase 2B!
-
-You'll be able to:
-• Send text broadcasts
-• Send photo broadcasts
-• Send video broadcasts
-• Schedule broadcasts
-• Track delivery
-
-Coming soon! 🚀
-"""
-    
-    keyboard = [
-        [InlineKeyboardButton(f"{EMOJI['back']} Back to Menu", callback_data=f"settings_back_{bot_model.id}")],
-    ]
-    
-    if update.callback_query:
-        await update.callback_query.message.edit_text(
-            text,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode='Markdown'
-        )
-    else:
-        await telegram_bot.send_message(
-            chat_id=update.effective_chat.id,
-            text=text,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode='Markdown'
-        )
 
 
 async def handle_admin_subscribers(bot_model, update, telegram_bot, db):
