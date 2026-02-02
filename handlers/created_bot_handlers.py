@@ -211,7 +211,8 @@ async def send_public_welcome(
         db: Database session
     """
     # Get custom welcome message (if owner set one)
-    welcome_message = bot_model.welcome_message
+    # Use getattr to safely handle if the field doesn't exist yet
+    welcome_message = getattr(bot_model, 'welcome_message', None)
     
     if not welcome_message:
         # Default welcome message
