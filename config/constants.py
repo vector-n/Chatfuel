@@ -324,6 +324,9 @@ EMOJI = {
     'clock': '🕐',
     'link': '🔗',
     'copy': '📋',
+    # Phase 2B additions
+    'send': '📤',
+    'loading': '⏳',
 }
 
 
