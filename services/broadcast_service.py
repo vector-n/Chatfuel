@@ -123,7 +123,7 @@ def get_broadcasts(
     if status:
         query = query.filter(Broadcast.status == status)
     
-    query = query.order_by(Broadcast.created_at.desc())
+    query = query.order_by(Broadcast.sent_at.desc())
     
     if offset:
         query = query.offset(offset)
