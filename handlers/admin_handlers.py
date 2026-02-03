@@ -27,6 +27,8 @@ from handlers.broadcast_handlers import (
     show_broadcast_history,
     cancel_broadcast,
     receive_text_broadcast,
+    receive_photo_broadcast,
+    receive_video_broadcast,
 )
 from utils.helpers import escape_markdown, format_datetime
 from config.constants import EMOJI
@@ -81,6 +83,20 @@ async def handle_admin_update(
     """
     # Handle messages
     if update.message:
+        # PHASE 2B: Check for photo broadcast
+        if update.message.photo and context:
+            compose_data = context.user_data.get('broadcast_compose')
+            if compose_data and compose_data['type'] == 'photo':
+                await receive_photo_broadcast(update, context)
+                return
+        
+        # PHASE 2B: Check for video broadcast
+        if update.message.video and context:
+            compose_data = context.user_data.get('broadcast_compose')
+            if compose_data and compose_data['type'] == 'video':
+                await receive_video_broadcast(update, context)
+                return
+        
         text = update.message.text
         
         if text == '/start':
