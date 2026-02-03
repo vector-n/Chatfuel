@@ -3,6 +3,7 @@ Broadcast Handlers
 
 Handlers for composing and sending broadcasts to bot subscribers.
 """
+
 import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
@@ -499,7 +500,7 @@ async def show_broadcast_history(
                 'failed': '❌'
             }.get(bc.status, '❓')
             
-            date_str = bc.created_at.strftime('%Y-%m-%d %H:%M') if bc.created_at else 'Unknown'
+            date_str = bc.sent_at.strftime('%Y-%m-%d %H:%M') if bc.sent_at else 'Unknown'
             content_type_emoji = {
                 'text': '✉️',
                 'photo': '📸',
