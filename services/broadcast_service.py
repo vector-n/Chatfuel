@@ -10,7 +10,7 @@ from datetime import datetime
 from typing import Optional, List, Tuple
 from sqlalchemy.orm import Session
 from telegram import Bot
-from telegram.error import TelegramError, Forbidden, ChatNotFound
+from telegram.error import TelegramError, Forbidden
 
 from database.models import Broadcast, Subscriber, BroadcastDelivery
 from services.subscriber_service import mark_subscriber_blocked
@@ -269,28 +269,20 @@ async def send_broadcast(
             db.add(delivery)
             failed += 1
             
-        except ChatNotFound as e:
-            # Chat not found
-            logger.warning(f"❌ Chat not found for {subscriber.user_telegram_id}")
-            
-            delivery = BroadcastDelivery(
-                broadcast_id=broadcast_id,
-                subscriber_id=subscriber.id,
-                status='failed',
-                error_message='Chat not found'
-            )
-            db.add(delivery)
-            failed += 1
-            
         except TelegramError as e:
-            # Other Telegram errors
+            # Other Telegram errors (including chat not found)
+            error_msg = str(e)
             logger.error(f"❌ Telegram error sending to {subscriber.user_telegram_id}: {e}")
             
+            # Check if it's a "chat not found" error by message content
+            if 'chat not found' in error_msg.lower():
+                error_msg = 'Chat not found'
+            
             delivery = BroadcastDelivery(
                 broadcast_id=broadcast_id,
                 subscriber_id=subscriber.id,
                 status='failed',
-                error_message=str(e)
+                error_message=error_msg
             )
             db.add(delivery)
             failed += 1
