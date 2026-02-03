@@ -3,7 +3,6 @@ Broadcast Handlers
 
 Handlers for composing and sending broadcasts to bot subscribers.
 """
-
 import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
