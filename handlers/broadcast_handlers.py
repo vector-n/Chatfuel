@@ -22,7 +22,6 @@ from services.broadcast_service import (
 )
 from services.subscriber_service import get_subscriber_count
 from utils.helpers import decrypt_token, escape_markdown
-from utils.formatters import format_datetime
 from config.constants import EMOJI
 
 logger = logging.getLogger(__name__)
@@ -501,7 +500,7 @@ async def show_broadcast_history(
                 'failed': '❌'
             }.get(bc.status, '❓')
             
-            date_str = format_datetime(bc.created_at, include_time=True)
+            date_str = bc.created_at.strftime('%Y-%m-%d %H:%M') if bc.created_at else 'Unknown'
             content_type_emoji = {
                 'text': '✉️',
                 'photo': '📸',
@@ -566,4 +565,3 @@ async def cancel_broadcast(
         reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode='Markdown'
     )
-
