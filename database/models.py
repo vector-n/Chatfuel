@@ -424,6 +424,25 @@ class BroadcastStat(Base):
         return f"<BroadcastStat(broadcast_id={self.broadcast_id}, user_id={self.user_telegram_id})>"
 
 
+class BroadcastDelivery(Base):
+    """Track individual broadcast deliveries to subscribers."""
+    
+    __tablename__ = 'broadcast_deliveries'
+    
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    broadcast_id = Column(BigInteger, ForeignKey('broadcasts.id', ondelete='CASCADE'), nullable=False, index=True)
+    subscriber_id = Column(BigInteger, ForeignKey('subscribers.id', ondelete='CASCADE'), nullable=False, index=True)
+    
+    status = Column(String(20), nullable=False, default='pending')  # pending, sent, failed
+    error_message = Column(Text, nullable=True)
+    
+    sent_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    def __repr__(self):
+        return f"<BroadcastDelivery(broadcast_id={self.broadcast_id}, subscriber_id={self.subscriber_id}, status={self.status})>"
+
+
 class ScheduledPost(Base):
     """Scheduled posts for later broadcast."""
     
