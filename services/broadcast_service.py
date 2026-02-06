@@ -45,12 +45,8 @@ def create_broadcast(
     broadcast = Broadcast(
         bot_id=bot_id,
         content_type=content_type,
-        text=text,
-        media_url=media_url,
-        media_file_id=media_file_id,
-        status='draft',
-        scheduled_for=scheduled_for,
-        created_at=datetime.utcnow()
+        content_text=text,
+        media_file_id=media_file_id
     )
     
     db.add(broadcast)
@@ -120,9 +116,6 @@ def get_broadcasts(
     """
     query = db.query(Broadcast).filter(Broadcast.bot_id == bot_id)
     
-    if status:
-        query = query.filter(Broadcast.status == status)
-    
     query = query.order_by(Broadcast.sent_at.desc())
     
     if offset:
@@ -135,14 +128,10 @@ def get_broadcasts(
 
 
 def delete_broadcast(db: Session, broadcast_id: int) -> bool:
-    """Delete a broadcast (only if draft or failed)."""
+    """Delete a broadcast."""
     broadcast = db.query(Broadcast).filter(Broadcast.id == broadcast_id).first()
     
     if not broadcast:
-        return False
-    
-    if broadcast.status not in ['draft', 'failed']:
-        logger.warning(f"Cannot delete broadcast {broadcast_id} with status {broadcast.status}")
         return False
     
     db.delete(broadcast)
@@ -176,8 +165,7 @@ async def send_broadcast(
         logger.error(f"Broadcast {broadcast_id} not found")
         return (0, 0)
     
-    # Update status to sending
-    broadcast.status = 'sending'
+    # Update sent_at timestamp
     broadcast.sent_at = datetime.utcnow()
     db.commit()
     
@@ -189,7 +177,6 @@ async def send_broadcast(
     ).all()
     
     total_subscribers = len(subscribers)
-    broadcast.total_subscribers = total_subscribers
     db.commit()
     
     logger.info(f"📢 Starting broadcast {broadcast_id} to {total_subscribers} subscribers")
@@ -207,41 +194,23 @@ async def send_broadcast(
             if broadcast.content_type == 'text':
                 await telegram_bot.send_message(
                     chat_id=subscriber.user_telegram_id,
-                    text=broadcast.text,
+                    text=broadcast.content_text,
                     parse_mode='Markdown'
                 )
             elif broadcast.content_type == 'photo':
-                if broadcast.media_file_id:
-                    await telegram_bot.send_photo(
-                        chat_id=subscriber.user_telegram_id,
-                        photo=broadcast.media_file_id,
-                        caption=broadcast.text,
-                        parse_mode='Markdown'
-                    )
-                else:
-                    # Fallback to URL
-                    await telegram_bot.send_photo(
-                        chat_id=subscriber.user_telegram_id,
-                        photo=broadcast.media_url,
-                        caption=broadcast.text,
-                        parse_mode='Markdown'
-                    )
+                await telegram_bot.send_photo(
+                    chat_id=subscriber.user_telegram_id,
+                    photo=broadcast.media_file_id,
+                    caption=broadcast.content_text,
+                    parse_mode='Markdown'
+                )
             elif broadcast.content_type == 'video':
-                if broadcast.media_file_id:
-                    await telegram_bot.send_video(
-                        chat_id=subscriber.user_telegram_id,
-                        video=broadcast.media_file_id,
-                        caption=broadcast.text,
-                        parse_mode='Markdown'
-                    )
-                else:
-                    # Fallback to URL
-                    await telegram_bot.send_video(
-                        chat_id=subscriber.user_telegram_id,
-                        video=broadcast.media_url,
-                        caption=broadcast.text,
-                        parse_mode='Markdown'
-                    )
+                await telegram_bot.send_video(
+                    chat_id=subscriber.user_telegram_id,
+                    video=broadcast.media_file_id,
+                    caption=broadcast.content_text,
+                    parse_mode='Markdown'
+                )
             
             # Record successful delivery
             delivery = BroadcastDelivery(
@@ -315,10 +284,8 @@ async def send_broadcast(
                 logger.error(f"Progress callback error: {e}")
     
     # Update broadcast with final stats
-    broadcast.successful_sends = successful
-    broadcast.failed_sends = failed
-    broadcast.status = 'sent' if successful > 0 else 'failed'
-    broadcast.completed_at = datetime.utcnow()
+    broadcast.sent_count = successful
+    broadcast.failed_count = failed
     db.commit()
     
     logger.info(f"✅ Broadcast {broadcast_id} complete: {successful} sent, {failed} failed")
@@ -359,12 +326,10 @@ def get_broadcast_stats(db: Session, broadcast_id: int) -> dict:
     
     return {
         'broadcast_id': broadcast.id,
-        'status': broadcast.status,
         'content_type': broadcast.content_type,
-        'created_at': broadcast.created_at,
         'sent_at': broadcast.sent_at,
-        'completed_at': broadcast.completed_at,
-        'total_subscribers': broadcast.total_subscribers,
+        'sent_count': broadcast.sent_count,
+        'failed_count': broadcast.failed_count,
         'successful_sends': successful_deliveries,
         'failed_sends': failed_deliveries,
         'total_deliveries': total_deliveries,
