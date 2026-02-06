@@ -147,13 +147,13 @@ async def handle_admin_update(
         
         # PHASE 2B: Broadcast composition callbacks
         elif data.startswith('bc_text_'):
-            await start_text_broadcast(bot_model, update, telegram_bot, context)
+            await start_text_broadcast(bot_model, update, telegram_bot, context, db)
         
         elif data.startswith('bc_photo_'):
-            await start_photo_broadcast(bot_model, update, telegram_bot, context)
+            await start_photo_broadcast(bot_model, update, telegram_bot, context, db)
         
         elif data.startswith('bc_video_'):
-            await start_video_broadcast(bot_model, update, telegram_bot, context)
+            await start_video_broadcast(bot_model, update, telegram_bot, context, db)
         
         elif data.startswith('bc_send_'):
             await execute_broadcast(bot_model, update, telegram_bot, context, db)
