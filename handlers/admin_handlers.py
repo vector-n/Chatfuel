@@ -164,6 +164,10 @@ async def handle_admin_update(
         elif data.startswith('bc_cancel_'):
             await cancel_broadcast(bot_model, update, telegram_bot, context)
         
+        # PHASE 2B: Back to bot menu from broadcast screens
+        elif data.startswith('bot_manage_'):
+            await handle_admin_start(bot_model, update, telegram_bot, db)
+        
         # Original callbacks
         elif data.startswith('admin_subs_'):
             await handle_admin_subscribers(bot_model, update, telegram_bot, db)
