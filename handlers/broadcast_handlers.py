@@ -21,6 +21,7 @@ from services.broadcast_service import (
     delete_broadcast
 )
 from services.subscriber_service import get_subscriber_count
+from services.user_state_service import set_user_state, clear_user_state  # PHASE 2B
 from utils.helpers import decrypt_token, escape_markdown
 from config.constants import EMOJI
 
@@ -94,16 +95,23 @@ async def start_text_broadcast(
     bot_model: BotModel,
     update: Update,
     telegram_bot,
-    context: ContextTypes.DEFAULT_TYPE
+    context: ContextTypes.DEFAULT_TYPE,
+    db: Session = None
 ):
     """Start composing a text broadcast."""
     await update.callback_query.answer()
+    
+    user_telegram_id = update.effective_user.id
     
     # Store bot_id in context for next message
     context.user_data['broadcast_compose'] = {
         'bot_id': bot_model.id,
         'type': 'text'
     }
+    
+    # PHASE 2B: Persist state to database for webhook
+    if db:
+        set_user_state(db, bot_model.id, user_telegram_id, context.user_data)
     
     text = f"""✉️ **Text Broadcast**
 
@@ -141,6 +149,7 @@ async def receive_text_broadcast(
     
     bot_id = compose_data['bot_id']
     text = update.message.text
+    user_telegram_id = update.effective_user.id
     
     # Store the text
     compose_data['text'] = text
@@ -149,6 +158,9 @@ async def receive_text_broadcast(
     # Show preview
     db = next(get_db())
     try:
+        # PHASE 2B: Persist updated state
+        set_user_state(db, bot_id, user_telegram_id, context.user_data)
+        
         bot_model = db.query(BotModel).filter(BotModel.id == bot_id).first()
         subscriber_count = get_subscriber_count(bot_id, db)
         
@@ -190,16 +202,23 @@ async def start_photo_broadcast(
     bot_model: BotModel,
     update: Update,
     telegram_bot,
-    context: ContextTypes.DEFAULT_TYPE
+    context: ContextTypes.DEFAULT_TYPE,
+    db: Session = None
 ):
     """Start composing a photo broadcast."""
     await update.callback_query.answer()
+    
+    user_telegram_id = update.effective_user.id
     
     # Store bot_id in context
     context.user_data['broadcast_compose'] = {
         'bot_id': bot_model.id,
         'type': 'photo'
     }
+    
+    # PHASE 2B: Persist state to database for webhook
+    if db:
+        set_user_state(db, bot_model.id, user_telegram_id, context.user_data)
     
     text = f"""📸 **Photo Broadcast**
 
@@ -233,6 +252,7 @@ async def receive_photo_broadcast(
     # Get largest photo
     photo = update.message.photo[-1]
     file_id = photo.file_id
+    user_telegram_id = update.effective_user.id
     
     # Store photo
     compose_data['media_file_id'] = file_id
@@ -244,6 +264,9 @@ async def receive_photo_broadcast(
     # Show preview
     db = next(get_db())
     try:
+        # PHASE 2B: Persist updated state
+        set_user_state(db, bot_id, user_telegram_id, context.user_data)
+        
         subscriber_count = get_subscriber_count(bot_id, db)
         
         caption_text = compose_data['caption'] if compose_data['caption'] else "_No caption_"
@@ -285,16 +308,23 @@ async def start_video_broadcast(
     bot_model: BotModel,
     update: Update,
     telegram_bot,
-    context: ContextTypes.DEFAULT_TYPE
+    context: ContextTypes.DEFAULT_TYPE,
+    db: Session = None
 ):
     """Start composing a video broadcast."""
     await update.callback_query.answer()
+    
+    user_telegram_id = update.effective_user.id
     
     # Store bot_id in context
     context.user_data['broadcast_compose'] = {
         'bot_id': bot_model.id,
         'type': 'video'
     }
+    
+    # PHASE 2B: Persist state to database for webhook
+    if db:
+        set_user_state(db, bot_model.id, user_telegram_id, context.user_data)
     
     text = f"""🎥 **Video Broadcast**
 
@@ -328,6 +358,7 @@ async def receive_video_broadcast(
     # Get video
     video = update.message.video
     file_id = video.file_id
+    user_telegram_id = update.effective_user.id
     
     # Store video
     compose_data['media_file_id'] = file_id
@@ -339,6 +370,9 @@ async def receive_video_broadcast(
     # Show preview
     db = next(get_db())
     try:
+        # PHASE 2B: Persist updated state
+        set_user_state(db, bot_id, user_telegram_id, context.user_data)
+        
         subscriber_count = get_subscriber_count(bot_id, db)
         
         caption_text = compose_data['caption'] if compose_data['caption'] else "_No caption_"
