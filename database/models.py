@@ -190,10 +190,18 @@ class ButtonMenu(Base):
     bot_id = Column(BigInteger, ForeignKey('bots.id', ondelete='CASCADE'), nullable=False, index=True)
     
     menu_name = Column(String(255), nullable=False)
+    menu_description = Column(Text)  # PHASE 3
     is_main_menu = Column(Boolean, default=False)
     command_trigger = Column(String(100))  # e.g., /menu, /products
     layout = Column(String(20), default='1col')
     is_active = Column(Boolean, default=True)
+    
+    # PHASE 3: Multi-level menu support
+    parent_menu_id = Column(BigInteger, ForeignKey('button_menus.id', ondelete='SET NULL'), index=True)
+    menu_type = Column(String(20), default='static')  # static, dynamic
+    data_source_config = Column(JSON)  # For dynamic menus
+    display_conditions = Column(JSON)  # Conditional display rules
+    is_default_menu = Column(Boolean, default=False)  # Show automatically on /start
     
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -248,6 +256,116 @@ class ButtonClick(Base):
     
     def __repr__(self):
         return f"<ButtonClick(button_id={self.button_id}, user_id={self.user_telegram_id})>"
+
+
+# ==================== PHASE 3: ENHANCED MENU SYSTEM ====================
+
+class MenuButton(Base):
+    """Enhanced buttons for Phase 3 multi-level menu system."""
+    
+    __tablename__ = 'menu_buttons'
+    
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    menu_id = Column(BigInteger, ForeignKey('button_menus.id', ondelete='CASCADE'), nullable=False, index=True)
+    
+    # Button display
+    button_text = Column(String(255), nullable=False)
+    emoji = Column(String(10))
+    row_position = Column(Integer, default=0)
+    column_position = Column(Integer, default=0)
+    
+    # Button type and action
+    button_type = Column(String(20), nullable=False, default='callback')  # callback, url, webapp, contact, location
+    action_type = Column(String(50), nullable=False)  # message, submenu, broadcast, form, webhook, tag_user
+    action_config = Column(JSON, nullable=False, default={})
+    
+    # Navigation targets
+    target_menu_id = Column(BigInteger, ForeignKey('button_menus.id', ondelete='SET NULL'))
+    target_form_id = Column(BigInteger)  # Will reference forms table in Phase 4
+    
+    # Conditional visibility
+    requires_subscription = Column(Boolean, default=False)
+    requires_tags = Column(ARRAY(String(255)))
+    visible_to_premium_only = Column(Boolean, default=False)
+    custom_visibility_rules = Column(JSON)
+    
+    # State
+    is_active = Column(Boolean, default=True, index=True)
+    sort_order = Column(Integer, default=0)
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    def __repr__(self):
+        return f"<MenuButton(id={self.id}, text={self.button_text}, action={self.action_type})>"
+
+
+class MenuNavigationLog(Base):
+    """Track user navigation through menus for analytics."""
+    
+    __tablename__ = 'menu_navigation_log'
+    
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    bot_id = Column(BigInteger, ForeignKey('bots.id', ondelete='CASCADE'), nullable=False, index=True)
+    subscriber_id = Column(BigInteger, ForeignKey('subscribers.id', ondelete='CASCADE'), nullable=False, index=True)
+    menu_id = Column(BigInteger, ForeignKey('button_menus.id', ondelete='SET NULL'))
+    button_id = Column(BigInteger, ForeignKey('menu_buttons.id', ondelete='SET NULL'))
+    
+    action_taken = Column(String(100))
+    session_id = Column(String(100))
+    
+    navigated_at = Column(DateTime, default=datetime.utcnow, index=True)
+    
+    def __repr__(self):
+        return f"<MenuNavigationLog(bot={self.bot_id}, subscriber={self.subscriber_id}, menu={self.menu_id})>"
+
+
+class MenuTemplate(Base):
+    """Pre-built menu templates that users can apply to their bots."""
+    
+    __tablename__ = 'menu_templates'
+    
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    
+    template_name = Column(String(255), nullable=False)
+    description = Column(Text)
+    category = Column(String(100), index=True)  # e-commerce, education, support, etc.
+    
+    menu_structure = Column(JSON, nullable=False)  # Full menu tree structure
+    preview_image_url = Column(Text)
+    
+    is_public = Column(Boolean, default=False, index=True)
+    usage_count = Column(Integer, default=0)
+    
+    created_by = Column(BigInteger, ForeignKey('users.id', ondelete='SET NULL'))
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    def __repr__(self):
+        return f"<MenuTemplate(id={self.id}, name={self.template_name}, category={self.category})>"
+
+
+class UserMenuContext(Base):
+    """Track user's current position in menu navigation tree."""
+    
+    __tablename__ = 'user_menu_context'
+    
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    bot_id = Column(BigInteger, ForeignKey('bots.id', ondelete='CASCADE'), nullable=False)
+    subscriber_id = Column(BigInteger, ForeignKey('subscribers.id', ondelete='CASCADE'), nullable=False)
+    
+    current_menu_id = Column(BigInteger, ForeignKey('button_menus.id', ondelete='SET NULL'))
+    menu_path = Column(ARRAY(BigInteger))  # Navigation breadcrumb
+    session_id = Column(String(100))
+    
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    __table_args__ = (
+        UniqueConstraint('bot_id', 'subscriber_id', name='uq_bot_subscriber_context'),
+    )
+    
+    def __repr__(self):
+        return f"<UserMenuContext(bot={self.bot_id}, subscriber={self.subscriber_id}, menu={self.current_menu_id})>"
 
 
 class Form(Base):
