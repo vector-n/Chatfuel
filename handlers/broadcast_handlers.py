@@ -527,12 +527,13 @@ async def show_broadcast_history(
     
     if broadcasts:
         for bc in broadcasts:
-            status_emoji = {
-                'draft': '📝',
-                'sending': '⏳',
-                'sent': '✅',
-                'failed': '❌'
-            }.get(bc.status, '❓')
+            # Determine status based on counts
+            if bc.sent_count > 0:
+                status_emoji = '✅'
+            elif bc.failed_count > 0:
+                status_emoji = '❌'
+            else:
+                status_emoji = '📝'
             
             date_str = bc.sent_at.strftime('%Y-%m-%d %H:%M') if bc.sent_at else 'Unknown'
             content_type_emoji = {
@@ -541,10 +542,10 @@ async def show_broadcast_history(
                 'video': '🎥'
             }.get(bc.content_type, '📄')
             
-            preview = bc.text[:30] + "..." if bc.text and len(bc.text) > 30 else bc.text or "No text"
+            preview = bc.content_text[:30] + "..." if bc.content_text and len(bc.content_text) > 30 else bc.content_text or "No text"
             
             text += f"\n{status_emoji} {content_type_emoji} {preview}"
-            text += f"\n   {date_str} • {bc.successful_sends or 0} sent"
+            text += f"\n   {date_str} • {bc.sent_count or 0} sent"
     else:
         text += "\nNo broadcasts yet."
     
