@@ -505,4 +505,26 @@ class Payment(Base):
         return f"<Payment(id={self.id}, user_id={self.user_id}, amount={self.amount}, status={self.status})>"
 
 
+class UserState(Base):
+    """Store temporary user state for webhook-based bots (broadcast composition, etc.)."""
+    
+    __tablename__ = 'user_states'
+    
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    bot_id = Column(BigInteger, ForeignKey('bots.id', ondelete='CASCADE'), nullable=False, index=True)
+    user_telegram_id = Column(BigInteger, nullable=False, index=True)
+    
+    state_data = Column(JSON, default={})  # Stores broadcast_compose, etc.
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    __table_args__ = (
+        UniqueConstraint('bot_id', 'user_telegram_id', name='uq_bot_user_state'),
+    )
+    
+    def __repr__(self):
+        return f"<UserState(bot_id={self.bot_id}, user={self.user_telegram_id})>"
+
+
 # Note: More models will be added in later phases (AutoPostSource, Webhook, ActivityLog, etc.)
