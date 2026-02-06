@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from database.models import Bot as BotModel, User, Subscriber
 from services.subscriber_service import create_or_update_subscriber, get_subscriber_count
+from services.user_state_service import get_user_state  # PHASE 2B: Persistent state
 from handlers.admin_handlers import handle_admin_update
 from handlers.public_handlers import handle_public_update
 from utils.helpers import escape_markdown
@@ -74,10 +75,10 @@ async def handle_created_bot_update(
         user_type = "OWNER" if is_owner else "SUBSCRIBER"
         logger.info(f"👤 {user_type} interaction: {user_telegram_id} → @{bot_model.bot_username}")
         
-        # PHASE 2B: Create context for broadcast state management
+        # PHASE 2B: Load user state from database for broadcast composition
         from types import SimpleNamespace
         context_data = SimpleNamespace()
-        context_data.user_data = {}
+        context_data.user_data = get_user_state(db, bot_model.id, user_telegram_id)
         
         # Route to appropriate handler
         if is_owner:
