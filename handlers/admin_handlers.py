@@ -30,6 +30,14 @@ from handlers.broadcast_handlers import (
     receive_photo_broadcast,
     receive_video_broadcast,
 )
+# PHASE 3: Menu handlers
+from handlers.menu_handlers import (
+    handle_admin_menus as handle_admin_menus_phase3,
+    handle_menu_edit,
+    start_menu_creation,
+    receive_menu_name,
+    show_upgrade_prompt
+)
 from utils.helpers import escape_markdown, format_datetime
 from config.constants import EMOJI
 
@@ -130,6 +138,13 @@ async def handle_admin_update(
                 if compose_data and compose_data['type'] == 'text':
                     await receive_text_broadcast(update, context)
                     return
+                
+                # PHASE 3: Check if we're creating a menu
+                menu_creation_data = context.user_data.get('menu_creation')
+                if menu_creation_data:
+                    handled = await receive_menu_name(update, context, db)
+                    if handled:
+                        return
             
             # Unknown command
             from handlers.created_bot_handlers import handle_unknown_command
@@ -174,6 +189,17 @@ async def handle_admin_update(
         
         elif data.startswith('admin_menus_'):
             await handle_admin_menus(bot_model, update, telegram_bot, db)
+        
+        # PHASE 3: Menu management callbacks
+        elif data.startswith('menu_edit_'):
+            menu_id = int(data.split('_')[2])
+            await handle_menu_edit(menu_id, update, telegram_bot, db)
+        
+        elif data.startswith('menu_create_'):
+            await start_menu_creation(bot_model.id, update, context)
+        
+        elif data.startswith('upgrade_prompt_'):
+            await show_upgrade_prompt(bot_model.id, update, telegram_bot)
         
         elif data.startswith('admin_forms_'):
             await handle_admin_forms(bot_model, update, telegram_bot, db)
@@ -265,30 +291,8 @@ async def handle_admin_subscribers(bot_model, update, telegram_bot, db):
 
 async def handle_admin_menus(bot_model, update, telegram_bot, db):
     """Show button menu builder (Phase 3)."""
-    text = f"""{EMOJI['menu']} **Button Menus**
-
-This feature will be available in Phase 3!
-
-You'll be able to:
-• Create custom button menus
-• Add URL buttons
-• Add command buttons
-• Set as main menu
-• Delete menus
-
-Coming soon! 🚀
-"""
-    
-    keyboard = [
-        [InlineKeyboardButton(f"{EMOJI['back']} Back to Menu", callback_data=f"settings_back_{bot_model.id}")],
-    ]
-    
-    if update.callback_query:
-        await update.callback_query.message.edit_text(
-            text,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode='Markdown'
-        )
+    # Call Phase 3 implementation
+    await handle_admin_menus_phase3(bot_model, update, telegram_bot, db)
     else:
         await telegram_bot.send_message(
             chat_id=update.effective_chat.id,
