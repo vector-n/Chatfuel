@@ -374,3 +374,460 @@ Choose your plan:"""
         reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode='Markdown'
     )
+
+
+# ==================== MENU SETTINGS ====================
+
+async def show_menu_settings(menu_id: int, update: Update, telegram_bot, db: Session):
+    """Show menu settings interface."""
+    
+    menu = get_menu(db, menu_id)
+    if not menu:
+        await update.callback_query.answer("Menu not found", show_alert=True)
+        return
+    
+    default_status = "✅ Yes" if menu.is_default_menu else "❌ No"
+    command = menu.command_trigger or "Not set"
+    
+    text = f"""⚙️ **Menu Settings**
+
+Menu: **{menu.menu_name}**
+
+Description: _{menu.menu_description or 'Not set'}_
+Default menu: {default_status}
+Command: {command}
+Layout: {menu.layout}
+
+What would you like to edit?"""
+    
+    keyboard = [
+        [InlineKeyboardButton(
+            "✏️ Edit Name",
+            callback_data=f"menu_edit_name_{menu_id}"
+        )],
+        [InlineKeyboardButton(
+            "📝 Edit Description",
+            callback_data=f"menu_edit_desc_{menu_id}"
+        )],
+        [InlineKeyboardButton(
+            "🏠 Set as Default Menu",
+            callback_data=f"menu_set_default_{menu_id}"
+        )],
+        [InlineKeyboardButton(
+            "⌨️ Set Command Trigger",
+            callback_data=f"menu_set_cmd_{menu_id}"
+        )],
+        [InlineKeyboardButton(
+            f"{EMOJI['back']} Back to Menu",
+            callback_data=f"menu_edit_{menu_id}"
+        )]
+    ]
+    
+    await update.callback_query.message.edit_text(
+        text,
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode='Markdown'
+    )
+
+
+async def start_menu_name_edit(menu_id: int, update: Update, context: ContextTypes.DEFAULT_TYPE, db: Session):
+    """Start editing menu name."""
+    
+    menu = get_menu(db, menu_id)
+    if not menu:
+        await update.callback_query.answer("Menu not found", show_alert=True)
+        return
+    
+    # Set state
+    if context and context.user_data:
+        context.user_data['menu_edit'] = {
+            'menu_id': menu_id,
+            'bot_id': menu.bot_id,
+            'step': 'name'
+        }
+        
+        from services.user_state_service import set_user_state
+        user_telegram_id = update.callback_query.from_user.id
+        set_user_state(db, menu.bot_id, user_telegram_id, context.user_data)
+    
+    text = f"""✏️ **Edit Menu Name**
+
+Current name: **{menu.menu_name}**
+
+Send the new menu name:"""
+    
+    keyboard = [[
+        InlineKeyboardButton(
+            f"{EMOJI['cancel']} Cancel",
+            callback_data=f"menu_settings_{menu_id}"
+        )
+    ]]
+    
+    await update.callback_query.message.edit_text(
+        text,
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode='Markdown'
+    )
+
+
+async def receive_menu_name_edit(update: Update, context: ContextTypes.DEFAULT_TYPE, db: Session):
+    """Receive new menu name."""
+    
+    edit_data = context.user_data.get('menu_edit')
+    if not edit_data or edit_data.get('step') != 'name':
+        return False
+    
+    new_name = update.message.text.strip()
+    menu_id = edit_data['menu_id']
+    
+    if len(new_name) < 2:
+        await update.message.reply_text("❌ Menu name is too short. Please send at least 2 characters.")
+        return True
+    
+    if len(new_name) > 100:
+        await update.message.reply_text("❌ Menu name is too long. Please keep it under 100 characters.")
+        return True
+    
+    menu = get_menu(db, menu_id)
+    old_name = menu.menu_name
+    menu.menu_name = new_name
+    db.commit()
+    
+    logger.info(f"✅ Menu {menu_id} renamed: '{old_name}' → '{new_name}'")
+    
+    # Clear state
+    context.user_data.pop('menu_edit', None)
+    
+    from services.user_state_service import set_user_state
+    user_telegram_id = update.message.from_user.id
+    set_user_state(db, edit_data['bot_id'], user_telegram_id, context.user_data)
+    
+    text = f"""✅ **Menu Renamed!**
+
+Old name: {old_name}
+New name: **{new_name}**"""
+    
+    keyboard = [[
+        InlineKeyboardButton(
+            f"{EMOJI['back']} Back to Settings",
+            callback_data=f"menu_settings_{menu_id}"
+        )
+    ]]
+    
+    await update.message.reply_text(
+        text,
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode='Markdown'
+    )
+    
+    return True
+
+
+async def start_menu_description_edit(menu_id: int, update: Update, context: ContextTypes.DEFAULT_TYPE, db: Session):
+    """Start editing menu description."""
+    
+    menu = get_menu(db, menu_id)
+    if not menu:
+        await update.callback_query.answer("Menu not found", show_alert=True)
+        return
+    
+    # Set state
+    if context and context.user_data:
+        context.user_data['menu_edit'] = {
+            'menu_id': menu_id,
+            'bot_id': menu.bot_id,
+            'step': 'description'
+        }
+        
+        from services.user_state_service import set_user_state
+        user_telegram_id = update.callback_query.from_user.id
+        set_user_state(db, menu.bot_id, user_telegram_id, context.user_data)
+    
+    current = menu.menu_description or "Not set"
+    
+    text = f"""📝 **Edit Menu Description**
+
+Current description: _{current}_
+
+Send the new description (or send /skip to remove):"""
+    
+    keyboard = [[
+        InlineKeyboardButton(
+            f"{EMOJI['cancel']} Cancel",
+            callback_data=f"menu_settings_{menu_id}"
+        )
+    ]]
+    
+    await update.callback_query.message.edit_text(
+        text,
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode='Markdown'
+    )
+
+
+async def receive_menu_description_edit(update: Update, context: ContextTypes.DEFAULT_TYPE, db: Session):
+    """Receive new menu description."""
+    
+    edit_data = context.user_data.get('menu_edit')
+    if not edit_data or edit_data.get('step') != 'description':
+        return False
+    
+    new_description = update.message.text.strip()
+    menu_id = edit_data['menu_id']
+    
+    menu = get_menu(db, menu_id)
+    
+    if new_description == '/skip':
+        menu.menu_description = None
+        new_description = "Removed"
+    else:
+        if len(new_description) > 500:
+            await update.message.reply_text("❌ Description is too long. Please keep it under 500 characters.")
+            return True
+        menu.menu_description = new_description
+    
+    db.commit()
+    
+    logger.info(f"✅ Menu {menu_id} description updated")
+    
+    # Clear state
+    context.user_data.pop('menu_edit', None)
+    
+    from services.user_state_service import set_user_state
+    user_telegram_id = update.message.from_user.id
+    set_user_state(db, edit_data['bot_id'], user_telegram_id, context.user_data)
+    
+    text = f"""✅ **Description Updated!**
+
+New description: _{new_description}_"""
+    
+    keyboard = [[
+        InlineKeyboardButton(
+            f"{EMOJI['back']} Back to Settings",
+            callback_data=f"menu_settings_{menu_id}"
+        )
+    ]]
+    
+    await update.message.reply_text(
+        text,
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode='Markdown'
+    )
+    
+    return True
+
+
+async def set_menu_as_default(menu_id: int, update: Update, telegram_bot, db: Session):
+    """Set menu as default (shown on /start)."""
+    
+    menu = get_menu(db, menu_id)
+    if not menu:
+        await update.callback_query.answer("Menu not found", show_alert=True)
+        return
+    
+    # Remove default flag from all other menus in this bot
+    db.query(ButtonMenu).filter(
+        ButtonMenu.bot_id == menu.bot_id,
+        ButtonMenu.id != menu_id
+    ).update({'is_default_menu': False})
+    
+    # Set this menu as default
+    menu.is_default_menu = True
+    db.commit()
+    
+    logger.info(f"✅ Menu {menu_id} set as default for bot {menu.bot_id}")
+    
+    await update.callback_query.answer("✅ Set as default menu!", show_alert=True)
+    
+    # Return to settings
+    await show_menu_settings(menu_id, update, telegram_bot, db)
+
+
+async def start_menu_command_edit(menu_id: int, update: Update, context: ContextTypes.DEFAULT_TYPE, db: Session):
+    """Start setting command trigger."""
+    
+    menu = get_menu(db, menu_id)
+    if not menu:
+        await update.callback_query.answer("Menu not found", show_alert=True)
+        return
+    
+    # Set state
+    if context and context.user_data:
+        context.user_data['menu_edit'] = {
+            'menu_id': menu_id,
+            'bot_id': menu.bot_id,
+            'step': 'command'
+        }
+        
+        from services.user_state_service import set_user_state
+        user_telegram_id = update.callback_query.from_user.id
+        set_user_state(db, menu.bot_id, user_telegram_id, context.user_data)
+    
+    current = menu.command_trigger or "Not set"
+    
+    text = f"""⌨️ **Set Command Trigger**
+
+Current command: {current}
+
+Send the command that should open this menu.
+
+Examples:
+• /menu
+• /products
+• /support
+
+Send the command now (or /skip to remove):"""
+    
+    keyboard = [[
+        InlineKeyboardButton(
+            f"{EMOJI['cancel']} Cancel",
+            callback_data=f"menu_settings_{menu_id}"
+        )
+    ]]
+    
+    await update.callback_query.message.edit_text(
+        text,
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode='Markdown'
+    )
+
+
+async def receive_menu_command_edit(update: Update, context: ContextTypes.DEFAULT_TYPE, db: Session):
+    """Receive new command trigger."""
+    
+    edit_data = context.user_data.get('menu_edit')
+    if not edit_data or edit_data.get('step') != 'command':
+        return False
+    
+    command = update.message.text.strip()
+    menu_id = edit_data['menu_id']
+    
+    menu = get_menu(db, menu_id)
+    
+    if command == '/skip':
+        menu.command_trigger = None
+        command = "Removed"
+    else:
+        if not command.startswith('/'):
+            await update.message.reply_text("❌ Command must start with /")
+            return True
+        
+        if len(command) > 100:
+            await update.message.reply_text("❌ Command is too long.")
+            return True
+        
+        menu.command_trigger = command
+    
+    db.commit()
+    
+    logger.info(f"✅ Menu {menu_id} command trigger set to: {command}")
+    
+    # Clear state
+    context.user_data.pop('menu_edit', None)
+    
+    from services.user_state_service import set_user_state
+    user_telegram_id = update.message.from_user.id
+    set_user_state(db, edit_data['bot_id'], user_telegram_id, context.user_data)
+    
+    text = f"""✅ **Command Set!**
+
+Command: {command}
+
+Subscribers can now use this command to open the menu."""
+    
+    keyboard = [[
+        InlineKeyboardButton(
+            f"{EMOJI['back']} Back to Settings",
+            callback_data=f"menu_settings_{menu_id}"
+        )
+    ]]
+    
+    await update.message.reply_text(
+        text,
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode='Markdown'
+    )
+    
+    return True
+
+
+# ==================== MENU DELETION ====================
+
+async def confirm_menu_delete(menu_id: int, update: Update, telegram_bot, db: Session):
+    """Show menu deletion confirmation."""
+    
+    menu = get_menu(db, menu_id)
+    if not menu:
+        await update.callback_query.answer("Menu not found", show_alert=True)
+        return
+    
+    # Check if menu has child menus
+    child_menus = db.query(ButtonMenu).filter(
+        ButtonMenu.parent_menu_id == menu_id,
+        ButtonMenu.is_active == True
+    ).all()
+    
+    buttons = get_menu_buttons(db, menu_id)
+    
+    warning = ""
+    if child_menus:
+        warning = f"\n\n⚠️ This menu has {len(child_menus)} submenu(s) that will also be affected!"
+    
+    text = f"""🗑️ **Delete Menu?**
+
+Are you sure you want to delete:
+**{menu.menu_name}**
+
+This menu has {len(buttons)} button(s).{warning}
+
+⚠️ This action cannot be undone!"""
+    
+    keyboard = [
+        [InlineKeyboardButton(
+            "✅ Yes, Delete",
+            callback_data=f"menu_delete_confirm_{menu_id}"
+        )],
+        [InlineKeyboardButton(
+            f"{EMOJI['cancel']} Cancel",
+            callback_data=f"menu_edit_{menu_id}"
+        )]
+    ]
+    
+    await update.callback_query.message.edit_text(
+        text,
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode='Markdown'
+    )
+
+
+async def delete_menu(menu_id: int, update: Update, telegram_bot, db: Session):
+    """Delete a menu."""
+    
+    menu = get_menu(db, menu_id)
+    if not menu:
+        await update.callback_query.answer("Menu not found", show_alert=True)
+        return
+    
+    bot_id = menu.bot_id
+    menu_name = menu.menu_name
+    
+    # Soft delete (set is_active to False)
+    menu.is_active = False
+    
+    # Also deactivate all buttons in this menu
+    db.query(MenuButton).filter(
+        MenuButton.menu_id == menu_id
+    ).update({'is_active': False})
+    
+    db.commit()
+    
+    logger.info(f"✅ Menu '{menu_name}' (ID: {menu_id}) deleted from bot {bot_id}")
+    
+    await update.callback_query.answer("Menu deleted successfully! ✅")
+    
+    # Return to menu list
+    from handlers.menu_handlers import handle_admin_menus
+    from database.models import Bot as BotModel
+    bot_model = db.query(BotModel).filter(BotModel.id == bot_id).first()
+    
+    await handle_admin_menus(bot_model, update, telegram_bot, db)
