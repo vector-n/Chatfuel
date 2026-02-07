@@ -65,23 +65,34 @@ async def start_button_creation(menu_id: int, update: Update, context: ContextTy
         )
         return
     
-    # Clear any existing state
-    if context and context.user_data:
-        # Clear any other creation states
-        context.user_data.pop('broadcast_compose', None)
-        context.user_data.pop('menu_creation', None)
-        
-        # Set button creation state
-        context.user_data['button_creation'] = {
-            'menu_id': menu_id,
-            'bot_id': menu.bot_id,
-            'step': 'button_text'
-        }
-        
-        # Save to database (for webhook-based bots)
-        from services.user_state_service import set_user_state
-        user_telegram_id = update.callback_query.from_user.id
-        set_user_state(db, menu.bot_id, user_telegram_id, context.user_data)
+    # Clear any existing state and set button creation state
+    if not context or not hasattr(context, 'user_data'):
+        logger.error("Context or user_data missing in start_button_creation!")
+        await update.callback_query.answer("Error: State management issue. Please try again.", show_alert=True)
+        return
+    
+    if context.user_data is None:
+        context.user_data = {}
+    
+    # Clear any other creation states
+    context.user_data.pop('broadcast_compose', None)
+    context.user_data.pop('menu_creation', None)
+    context.user_data.pop('menu_edit', None)
+    
+    # Set button creation state
+    context.user_data['button_creation'] = {
+        'menu_id': menu_id,
+        'bot_id': menu.bot_id,
+        'step': 'button_text'
+    }
+    
+    logger.info(f"Button creation state set: {context.user_data['button_creation']}")
+    
+    # Save to database (for webhook-based bots)
+    from services.user_state_service import set_user_state
+    user_telegram_id = update.callback_query.from_user.id
+    set_user_state(db, menu.bot_id, user_telegram_id, context.user_data)
+    logger.info(f"State saved to database for user {user_telegram_id}")
     
     text = f"""➕ **Add New Button**
 
@@ -117,8 +128,16 @@ async def receive_button_text(update: Update, context: ContextTypes.DEFAULT_TYPE
     """Receive button text and ask for action type."""
     
     # Check if we're in button creation mode
+    if not context or not hasattr(context, 'user_data'):
+        logger.error("Context or user_data is missing!")
+        return False
+    
     creation_data = context.user_data.get('button_creation')
+    
+    logger.info(f"receive_button_text called - creation_data: {creation_data}")
+    
     if not creation_data or creation_data.get('step') != 'button_text':
+        logger.warning(f"Not in button_text step. Current step: {creation_data.get('step') if creation_data else 'None'}")
         return False
     
     button_text = update.message.text.strip()
