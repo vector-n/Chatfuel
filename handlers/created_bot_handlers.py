@@ -78,7 +78,8 @@ async def handle_created_bot_update(
         # PHASE 2B: Load user state from database for broadcast composition
         from types import SimpleNamespace
         context_data = SimpleNamespace()
-        context_data.user_data = get_user_state(db, bot_model.id, user_telegram_id)
+        user_state = get_user_state(db, bot_model.id, user_telegram_id)
+        context_data.user_data = user_state if user_state else {}
         
         # Route to appropriate handler
         if is_owner:
