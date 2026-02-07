@@ -293,13 +293,6 @@ async def handle_admin_menus(bot_model, update, telegram_bot, db):
     """Show button menu builder (Phase 3)."""
     # Call Phase 3 implementation
     await handle_admin_menus_phase3(bot_model, update, telegram_bot, db)
-    else:
-        await telegram_bot.send_message(
-            chat_id=update.effective_chat.id,
-            text=text,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode='Markdown'
-        )
 
 
 async def handle_admin_forms(bot_model, update, telegram_bot, db):
