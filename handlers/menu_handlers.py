@@ -439,16 +439,23 @@ async def start_menu_name_edit(menu_id: int, update: Update, context: ContextTyp
         return
     
     # Set state
-    if context and context.user_data:
-        context.user_data['menu_edit'] = {
-            'menu_id': menu_id,
-            'bot_id': menu.bot_id,
-            'step': 'name'
-        }
-        
-        from services.user_state_service import set_user_state
-        user_telegram_id = update.callback_query.from_user.id
-        set_user_state(db, menu.bot_id, user_telegram_id, context.user_data)
+    if not context or not hasattr(context, 'user_data'):
+        logger.error("Context or user_data missing!")
+        await update.callback_query.answer("Error: State management issue. Please try again.", show_alert=True)
+        return
+    
+    if context.user_data is None:
+        context.user_data = {}
+    
+    context.user_data['menu_edit'] = {
+        'menu_id': menu_id,
+        'bot_id': menu.bot_id,
+        'step': 'name'
+    }
+    
+    from services.user_state_service import set_user_state
+    user_telegram_id = update.callback_query.from_user.id
+    set_user_state(db, menu.bot_id, user_telegram_id, context.user_data)
     
     text = f"""✏️ **Edit Menu Name**
 
@@ -532,16 +539,23 @@ async def start_menu_description_edit(menu_id: int, update: Update, context: Con
         return
     
     # Set state
-    if context and context.user_data:
-        context.user_data['menu_edit'] = {
-            'menu_id': menu_id,
-            'bot_id': menu.bot_id,
-            'step': 'description'
-        }
-        
-        from services.user_state_service import set_user_state
-        user_telegram_id = update.callback_query.from_user.id
-        set_user_state(db, menu.bot_id, user_telegram_id, context.user_data)
+    if not context or not hasattr(context, 'user_data'):
+        logger.error("Context or user_data missing!")
+        await update.callback_query.answer("Error: State management issue. Please try again.", show_alert=True)
+        return
+    
+    if context.user_data is None:
+        context.user_data = {}
+    
+    context.user_data['menu_edit'] = {
+        'menu_id': menu_id,
+        'bot_id': menu.bot_id,
+        'step': 'description'
+    }
+    
+    from services.user_state_service import set_user_state
+    user_telegram_id = update.callback_query.from_user.id
+    set_user_state(db, menu.bot_id, user_telegram_id, context.user_data)
     
     current = menu.menu_description or "Not set"
     
@@ -652,16 +666,23 @@ async def start_menu_command_edit(menu_id: int, update: Update, context: Context
         return
     
     # Set state
-    if context and context.user_data:
-        context.user_data['menu_edit'] = {
-            'menu_id': menu_id,
-            'bot_id': menu.bot_id,
-            'step': 'command'
-        }
-        
-        from services.user_state_service import set_user_state
-        user_telegram_id = update.callback_query.from_user.id
-        set_user_state(db, menu.bot_id, user_telegram_id, context.user_data)
+    if not context or not hasattr(context, 'user_data'):
+        logger.error("Context or user_data missing!")
+        await update.callback_query.answer("Error: State management issue. Please try again.", show_alert=True)
+        return
+    
+    if context.user_data is None:
+        context.user_data = {}
+    
+    context.user_data['menu_edit'] = {
+        'menu_id': menu_id,
+        'bot_id': menu.bot_id,
+        'step': 'command'
+    }
+    
+    from services.user_state_service import set_user_state
+    user_telegram_id = update.callback_query.from_user.id
+    set_user_state(db, menu.bot_id, user_telegram_id, context.user_data)
     
     current = menu.command_trigger or "Not set"
     
