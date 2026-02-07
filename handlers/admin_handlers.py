@@ -36,7 +36,30 @@ from handlers.menu_handlers import (
     handle_menu_edit,
     start_menu_creation,
     receive_menu_name,
-    show_upgrade_prompt
+    show_upgrade_prompt,
+    show_menu_settings,
+    start_menu_name_edit,
+    receive_menu_name_edit,
+    start_menu_description_edit,
+    receive_menu_description_edit,
+    set_menu_as_default,
+    start_menu_command_edit,
+    receive_menu_command_edit,
+    confirm_menu_delete,
+    delete_menu
+)
+# PHASE 3B: Button handlers
+from handlers.button_handlers import (
+    start_button_creation,
+    receive_button_text,
+    handle_action_type_selection,
+    receive_message_content,
+    receive_url_content,
+    handle_submenu_selection,
+    show_button_list,
+    show_button_edit,
+    confirm_button_delete,
+    delete_button
 )
 from utils.helpers import escape_markdown, format_datetime
 from config.constants import EMOJI
@@ -145,6 +168,40 @@ async def handle_admin_update(
                     handled = await receive_menu_name(update, context, db)
                     if handled:
                         return
+                
+                # PHASE 3B: Check if we're creating a button
+                button_creation_data = context.user_data.get('button_creation')
+                if button_creation_data:
+                    step = button_creation_data.get('step')
+                    if step == 'button_text':
+                        handled = await receive_button_text(update, context, db)
+                        if handled:
+                            return
+                    elif step == 'message_content':
+                        handled = await receive_message_content(update, context, db)
+                        if handled:
+                            return
+                    elif step == 'url_content':
+                        handled = await receive_url_content(update, context, db)
+                        if handled:
+                            return
+                
+                # PHASE 3B: Check if we're editing menu settings
+                menu_edit_data = context.user_data.get('menu_edit')
+                if menu_edit_data:
+                    step = menu_edit_data.get('step')
+                    if step == 'name':
+                        handled = await receive_menu_name_edit(update, context, db)
+                        if handled:
+                            return
+                    elif step == 'description':
+                        handled = await receive_menu_description_edit(update, context, db)
+                        if handled:
+                            return
+                    elif step == 'command':
+                        handled = await receive_menu_command_edit(update, context, db)
+                        if handled:
+                            return
             
             # Unknown command
             from handlers.created_bot_handlers import handle_unknown_command
@@ -200,6 +257,86 @@ async def handle_admin_update(
         
         elif data.startswith('upgrade_prompt_'):
             await show_upgrade_prompt(bot_model.id, update, telegram_bot)
+        
+        # PHASE 3B: Button management callbacks
+        elif data.startswith('btn_add_'):
+            menu_id = int(data.split('_')[2])
+            await start_button_creation(menu_id, update, context, db)
+        
+        elif data.startswith('btn_action_message_'):
+            menu_id = int(data.split('_')[3])
+            await handle_action_type_selection('message', menu_id, update, context, db)
+        
+        elif data.startswith('btn_action_url_'):
+            menu_id = int(data.split('_')[3])
+            await handle_action_type_selection('url', menu_id, update, context, db)
+        
+        elif data.startswith('btn_action_submenu_'):
+            menu_id = int(data.split('_')[3])
+            await handle_action_type_selection('submenu', menu_id, update, context, db)
+        
+        elif data.startswith('btn_action_form_'):
+            menu_id = int(data.split('_')[3])
+            await handle_action_type_selection('form', menu_id, update, context, db)
+        
+        elif data.startswith('btn_submenu_') and not data.startswith('btn_action_submenu_'):
+            # Format: btn_submenu_{submenu_id}_{menu_id}
+            parts = data.split('_')
+            submenu_id = int(parts[2])
+            menu_id = int(parts[3])
+            await handle_submenu_selection(submenu_id, menu_id, update, context, db)
+        
+        elif data.startswith('btn_list_'):
+            menu_id = int(data.split('_')[2])
+            await show_button_list(menu_id, update, telegram_bot, db)
+        
+        elif data.startswith('btn_edit_') and not data.startswith('btn_edit_text_') and not data.startswith('btn_edit_action_'):
+            # Format: btn_edit_{button_id}_{menu_id}
+            parts = data.split('_')
+            button_id = int(parts[2])
+            menu_id = int(parts[3])
+            await show_button_edit(button_id, menu_id, update, telegram_bot, db)
+        
+        elif data.startswith('btn_delete_confirm_'):
+            parts = data.split('_')
+            button_id = int(parts[3])
+            menu_id = int(parts[4])
+            await confirm_button_delete(button_id, menu_id, update, telegram_bot, db)
+        
+        elif data.startswith('btn_delete_'):
+            parts = data.split('_')
+            button_id = int(parts[2])
+            menu_id = int(parts[3])
+            await delete_button(button_id, menu_id, update, telegram_bot, db)
+        
+        # PHASE 3B: Menu settings callbacks
+        elif data.startswith('menu_settings_'):
+            menu_id = int(data.split('_')[2])
+            await show_menu_settings(menu_id, update, telegram_bot, db)
+        
+        elif data.startswith('menu_edit_name_'):
+            menu_id = int(data.split('_')[3])
+            await start_menu_name_edit(menu_id, update, context, db)
+        
+        elif data.startswith('menu_edit_desc_'):
+            menu_id = int(data.split('_')[3])
+            await start_menu_description_edit(menu_id, update, context, db)
+        
+        elif data.startswith('menu_set_default_'):
+            menu_id = int(data.split('_')[3])
+            await set_menu_as_default(menu_id, update, telegram_bot, db)
+        
+        elif data.startswith('menu_set_cmd_'):
+            menu_id = int(data.split('_')[3])
+            await start_menu_command_edit(menu_id, update, context, db)
+        
+        elif data.startswith('menu_delete_') and not data.startswith('menu_delete_confirm_'):
+            menu_id = int(data.split('_')[2])
+            await confirm_menu_delete(menu_id, update, telegram_bot, db)
+        
+        elif data.startswith('menu_delete_confirm_'):
+            menu_id = int(data.split('_')[3])
+            await delete_menu(menu_id, update, telegram_bot, db)
         
         elif data.startswith('admin_forms_'):
             await handle_admin_forms(bot_model, update, telegram_bot, db)
