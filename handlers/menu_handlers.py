@@ -212,15 +212,25 @@ Buttons: **{button_count}**{"/" + str(max_buttons) if max_buttons != -1 else " (
     )
 
 
-async def start_menu_creation(bot_id: int, update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def start_menu_creation(bot_id: int, update: Update, context: ContextTypes.DEFAULT_TYPE, db: Session):
     """Start the menu creation flow."""
     
-    # Store state for next message
-    if context:
+    # IMPORTANT: Clear any existing broadcast composition state
+    if context and context.user_data:
+        # Clear broadcast state if it exists
+        if 'broadcast_compose' in context.user_data:
+            del context.user_data['broadcast_compose']
+        
+        # Set menu creation state
         context.user_data['menu_creation'] = {
             'bot_id': bot_id,
             'step': 'name'
         }
+        
+        # Save to database (for webhook-based bots)
+        from services.user_state_service import set_user_state
+        user_telegram_id = update.callback_query.from_user.id
+        set_user_state(db, bot_id, user_telegram_id, context.user_data)
     
     text = """➕ **Create New Menu**
 
@@ -285,10 +295,21 @@ async def receive_menu_name(update: Update, context: ContextTypes.DEFAULT_TYPE, 
         )
         # Clear state
         context.user_data.pop('menu_creation', None)
+        
+        # Save to database
+        from services.user_state_service import set_user_state
+        user_telegram_id = update.message.from_user.id
+        set_user_state(db, bot_id, user_telegram_id, context.user_data)
+        
         return True
     
     # Clear state
     context.user_data.pop('menu_creation', None)
+    
+    # Save cleared state to database
+    from services.user_state_service import set_user_state
+    user_telegram_id = update.message.from_user.id
+    set_user_state(db, bot_id, user_telegram_id, context.user_data)
     
     # Show success and menu edit screen
     text = f"""✅ **Menu Created!**
