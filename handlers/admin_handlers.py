@@ -196,7 +196,7 @@ async def handle_admin_update(
             await handle_menu_edit(menu_id, update, telegram_bot, db)
         
         elif data.startswith('menu_create_'):
-            await start_menu_creation(bot_model.id, update, context)
+            await start_menu_creation(bot_model.id, update, context, db)
         
         elif data.startswith('upgrade_prompt_'):
             await show_upgrade_prompt(bot_model.id, update, telegram_bot)
