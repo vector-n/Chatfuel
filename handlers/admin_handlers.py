@@ -172,6 +172,7 @@ async def handle_admin_update(
                 # PHASE 3B: Check if we're creating a button
                 button_creation_data = context.user_data.get('button_creation')
                 if button_creation_data:
+                    logger.info(f"Button creation state detected: {button_creation_data}")
                     step = button_creation_data.get('step')
                     if step == 'button_text':
                         handled = await receive_button_text(update, context, db)
@@ -185,6 +186,8 @@ async def handle_admin_update(
                         handled = await receive_url_content(update, context, db)
                         if handled:
                             return
+                else:
+                    logger.debug(f"No button creation state. user_data keys: {list(context.user_data.keys()) if context.user_data else 'None'}")
                 
                 # PHASE 3B: Check if we're editing menu settings
                 menu_edit_data = context.user_data.get('menu_edit')
