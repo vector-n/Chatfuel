@@ -210,6 +210,7 @@ async def send_public_welcome(
 ):
     """
     Send public welcome message to regular subscribers.
+    Shows default menu if configured, otherwise shows generic welcome.
     
     Args:
         bot_model: Bot database model
@@ -217,32 +218,55 @@ async def send_public_welcome(
         telegram_bot: Telegram Bot instance
         db: Database session
     """
-    # Get custom welcome message (if owner set one)
-    # Use getattr to safely handle if the field doesn't exist yet
-    welcome_message = getattr(bot_model, 'welcome_message', None)
+    # PHASE 3B: Check if there's a default menu configured
+    from services.menu_service import get_default_menu
+    from database.models import Subscriber
     
-    if not welcome_message:
-        # Default welcome message
-        bot_name = escape_markdown(bot_model.bot_name or bot_model.bot_username)
-        welcome_message = f"Welcome to {bot_name}! 🎉\n\nYou're now subscribed!"
+    # Get subscriber (needed for menu display)
+    user_telegram_id = update.effective_user.id
+    subscriber = db.query(Subscriber).filter(
+        Subscriber.bot_id == bot_model.id,
+        Subscriber.user_telegram_id == user_telegram_id
+    ).first()
     
-    # TODO: Get main menu from button_menus table (Phase 3)
-    # For now, show a simple keyboard
-    keyboard = [
-        [
-            InlineKeyboardButton("ℹ️ About", callback_data=f"public_about_{bot_model.id}"),
-            InlineKeyboardButton("❓ Help", callback_data=f"public_help_{bot_model.id}"),
-        ],
-    ]
+    default_menu = get_default_menu(db, bot_model.id)
     
-    await telegram_bot.send_message(
-        chat_id=update.effective_chat.id,
-        text=welcome_message,
-        reply_markup=InlineKeyboardMarkup(keyboard),
-        parse_mode='Markdown'
-    )
-    
-    logger.info(f"✅ Sent public welcome to subscriber in @{bot_model.bot_username}")
+    if default_menu and subscriber:
+        # Show the default menu
+        from handlers.menu_display_handlers import show_menu_to_subscriber
+        await show_menu_to_subscriber(
+            bot_model=bot_model,
+            menu_id=default_menu.id,
+            update=update,
+            telegram_bot=telegram_bot,
+            db=db,
+            subscriber=subscriber,
+            edit_message=False
+        )
+    else:
+        # No default menu, show generic welcome
+        welcome_message = getattr(bot_model, 'welcome_message', None)
+        
+        if not welcome_message:
+            # Default welcome message
+            bot_name = escape_markdown(bot_model.bot_name or bot_model.bot_username)
+            welcome_message = f"Welcome to {bot_name}! 🎉\n\nYou're now subscribed!"
+        
+        keyboard = [
+            [
+                InlineKeyboardButton("ℹ️ About", callback_data=f"public_about_{bot_model.id}"),
+                InlineKeyboardButton("❓ Help", callback_data=f"public_help_{bot_model.id}"),
+            ],
+        ]
+        
+        await telegram_bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=welcome_message,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode='Markdown'
+        )
+        
+        logger.info(f"✅ Sent public welcome to subscriber in @{bot_model.bot_username}")
 
 
 async def handle_unknown_command(
